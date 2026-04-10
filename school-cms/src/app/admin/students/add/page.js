@@ -20,11 +20,23 @@ export default function AddStudentPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
   const [success, setSuccess] = useState(false)
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.first_name.trim()) e.first_name = 'First name is required'
+    if (!form.class_id) e.class_id = 'Class ID is required'
+    if (!form.section_id) e.section_id = 'Section ID is required'
+    if (!form.guardian_phone.trim()) e.guardian_phone = 'Guardian phone is required'
+    return e
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const ve = validate()
+    if (Object.keys(ve).length) { setErrors(ve); return }
     setError('')
     setSaving(true)
     try {
@@ -85,7 +97,8 @@ export default function AddStudentPage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Basic Information</h3>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="First Name" required>
-              <input className="input" value={form.first_name} onChange={f('first_name')} required />
+              <input className={`input ${errors.first_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.first_name} onChange={f('first_name')} />
+              {errors.first_name && <p className="text-xs text-red-500 mt-1">{errors.first_name}</p>}
             </FormField>
             <FormField label="Last Name">
               <input className="input" value={form.last_name} onChange={f('last_name')} />
@@ -123,10 +136,12 @@ export default function AddStudentPage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Class & Enrollment</h3>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Class ID" required>
-              <input className="input" type="number" value={form.class_id} onChange={f('class_id')} placeholder="Enter Class ID" required />
+              <input className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.class_id} onChange={f('class_id')} placeholder="Enter Class ID" />
+              {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
             </FormField>
             <FormField label="Section ID" required>
-              <input className="input" type="number" value={form.section_id} onChange={f('section_id')} placeholder="Enter Section ID" required />
+              <input className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.section_id} onChange={f('section_id')} placeholder="Enter Section ID" />
+              {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
             </FormField>
             <FormField label="Enroll Date">
               <input className="input" type="date" value={form.enroll_date} onChange={f('enroll_date')} />
@@ -186,7 +201,8 @@ export default function AddStudentPage() {
               <input className="input" value={form.guardian_last_name} onChange={f('guardian_last_name')} />
             </FormField>
             <FormField label="Guardian Phone" required>
-              <input className="input" value={form.guardian_phone} onChange={f('guardian_phone')} required />
+              <input className={`input ${errors.guardian_phone ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.guardian_phone} onChange={f('guardian_phone')} />
+              {errors.guardian_phone && <p className="text-xs text-red-500 mt-1">{errors.guardian_phone}</p>}
             </FormField>
             <FormField label="Guardian Email">
               <input className="input" type="email" value={form.guardian_email} onChange={f('guardian_email')} />

@@ -9,12 +9,23 @@ export default function RolesPage() {
   const [modalOpen, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name:'', permissions:'', description:'' })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
-  const openAdd = () => { setEditing(null); setForm({ name:'',permissions:'',description:'' }); setModal(true) }
-  const openEdit = (r) => { setEditing(r); setForm({ name:r.name,permissions:r.permissions,description:r.description }); setModal(true) }
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+  const openAdd = () => { setEditing(null); setForm({ name:'',permissions:'',description:'' }); setErrors({}); setModal(true) }
+  const openEdit = (r) => { setEditing(r); setForm({ name:r.name,permissions:r.permissions,description:r.description }); setErrors({}); setModal(true) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = 'Role name is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.name) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     if (editing) setData(p => p.map(r => r.id===editing.id ? {...r,...form} : r))
     else setData(p => [...p, {...form, id:Date.now(), users:0}])
     setModal(false)
@@ -43,10 +54,13 @@ export default function RolesPage() {
           ))}
         </Table>
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title={editing?'Edit Role':'Add Role'}
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title={editing?'Edit Role':'Add Role'}
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
         <div className="space-y-4">
-          <FormField label="Role Name" required><input className="input" value={form.name} onChange={f('name')} placeholder="Admin" /></FormField>
+          <FormField label="Role Name" required>
+            <input className={`input ${errors.name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.name} onChange={f('name')} placeholder="Admin" />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </FormField>
           <FormField label="Permissions"><textarea className="input" rows={2} value={form.permissions} onChange={f('permissions')} placeholder="Students, Teachers, Fees..." /></FormField>
           <FormField label="Description"><input className="input" value={form.description} onChange={f('description')} /></FormField>
         </div>

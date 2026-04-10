@@ -12,6 +12,7 @@ export default function StaffRolesPage() {
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState({ role_name: '', is_active: true })
+  const [errors, setErrors]   = useState({})
 
   const fetchRoles = useCallback(async () => {
     setLoading(true); setError('')
@@ -24,16 +25,27 @@ export default function StaffRolesPage() {
 
   useEffect(() => { fetchRoles() }, [fetchRoles])
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item
       ? { role_name: item.role_name || '', is_active: item.is_active ?? true }
       : { role_name: '', is_active: true })
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.role_name.trim()) e.role_name = 'Role name is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.role_name.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -82,22 +94,23 @@ export default function StaffRolesPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Role' : 'Add Role'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <FormField label="Role Name" required>
           <input
-            className="input"
+            className={`input ${errors.role_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.role_name}
-            onChange={e => setForm(f => ({ ...f, role_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, role_name: e.target.value })); if (errors.role_name) setErrors(p => ({ ...p, role_name: '' })) }}
             placeholder="e.g. Accountant, Librarian, Peon"
           />
+          {errors.role_name && <p className="text-xs text-red-500 mt-1">{errors.role_name}</p>}
         </FormField>
         <FormField label="Active">
           <label className="flex items-center gap-2 mt-1 cursor-pointer">

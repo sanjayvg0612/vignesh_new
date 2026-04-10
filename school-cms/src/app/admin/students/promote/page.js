@@ -9,6 +9,7 @@ export default function PromotePage() {
   const [promoting, setPromoting] = useState(false)
   const [success, setSuccess]     = useState(null)
   const [error, setError]         = useState('')
+  const [classError, setClassError] = useState('')
   const [classes, setClasses]     = useState([])
 
   useEffect(() => {
@@ -19,7 +20,8 @@ export default function PromotePage() {
 
   const handlePromote = async (e) => {
     e.preventDefault()
-    if (!classId) return
+    if (!classId) { setClassError('Please select a class'); return }
+    setClassError('')
     if (!confirm('Promote all students from this class to the next class? This action cannot be undone.')) return
     setPromoting(true)
     setSuccess(null)
@@ -75,13 +77,14 @@ export default function PromotePage() {
         <form onSubmit={handlePromote} className="space-y-4">
           <FormField label="From Class" required>
             <select
-              className="input"
+              className={`input ${classError ? 'border-red-400 focus:ring-red-400' : ''}`}
               value={classId}
-              onChange={e => setClassId(e.target.value)}
+              onChange={e => { setClassId(e.target.value); if(classError) setClassError('') }}
             >
               <option value="">— Select the class to promote from —</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {classError && <p className="text-xs text-red-500 mt-1">{classError}</p>}
           </FormField>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
@@ -91,7 +94,7 @@ export default function PromotePage() {
           <button
             type="submit"
             className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!classId || promoting}
+            disabled={promoting}
           >
             <TrendingUp className="w-4 h-4" />
             {promoting ? 'Promoting...' : 'Promote All Students'}

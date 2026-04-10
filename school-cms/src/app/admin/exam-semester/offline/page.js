@@ -20,6 +20,7 @@ export default function OfflineExamPage() {
   const [form, setForm]       = useState({
     exam_name: '', school_stream_id: '', session_yr: '', exam_description: '', is_active: true,
   })
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -42,6 +43,8 @@ export default function OfflineExamPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -51,18 +54,30 @@ export default function OfflineExamPage() {
       exam_description: item.exam_description || '',
       is_active:        item.is_active !== false,
     } : { exam_name: '', school_stream_id: '', session_yr: '', exam_description: '', is_active: true })
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.exam_name.trim()) e.exam_name = 'Exam name is required'
+    if (!form.school_stream_id) e.school_stream_id = 'Stream is required'
+    if (!form.session_yr.trim()) e.session_yr = 'Session year is required'
+    if (!form.exam_description.trim()) e.exam_description = 'Description is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.exam_name.trim() || !form.school_stream_id || !form.session_yr.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       const payload = {
         exam_name:        form.exam_name.trim(),
         school_stream_id: parseInt(form.school_stream_id, 10),
         session_yr:       form.session_yr.trim(),
-        exam_description: form.exam_description.trim() || undefined,
+        exam_description: form.exam_description.trim(),
         is_active:        form.is_active,
       }
       if (editing) {
@@ -132,31 +147,55 @@ export default function OfflineExamPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Exam' : 'Add Offline Exam'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <FormField label="Exam Name" required>
-          <input className="input" value={form.exam_name} onChange={f('exam_name')} placeholder="e.g. Mid-Term 2025" />
+          <input
+            className={`input ${errors.exam_name ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.exam_name}
+            onChange={e => { setForm(p => ({ ...p, exam_name: e.target.value })); if (errors.exam_name) setErrors(p => ({ ...p, exam_name: '' })) }}
+            placeholder="e.g. Mid-Term 2025"
+          />
+          {errors.exam_name && <p className="text-xs text-red-500 mt-1">{errors.exam_name}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Stream" required>
-            <select className="input" value={form.school_stream_id} onChange={f('school_stream_id')}>
+            <select
+              className={`input ${errors.school_stream_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+              value={form.school_stream_id}
+              onChange={e => { setForm(p => ({ ...p, school_stream_id: e.target.value })); if (errors.school_stream_id) setErrors(p => ({ ...p, school_stream_id: '' })) }}
+            >
               <option value="">— Select Stream —</option>
               {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.name}</option>)}
             </select>
+            {errors.school_stream_id && <p className="text-xs text-red-500 mt-1">{errors.school_stream_id}</p>}
           </FormField>
           <FormField label="Session Year" required>
-            <input className="input" value={form.session_yr} onChange={f('session_yr')} placeholder="e.g. 2024-25" />
+            <input
+              className={`input ${errors.session_yr ? 'border-red-400 focus:ring-red-400' : ''}`}
+              value={form.session_yr}
+              onChange={e => { setForm(p => ({ ...p, session_yr: e.target.value })); if (errors.session_yr) setErrors(p => ({ ...p, session_yr: '' })) }}
+              placeholder="e.g. 2024-25"
+            />
+            {errors.session_yr && <p className="text-xs text-red-500 mt-1">{errors.session_yr}</p>}
           </FormField>
         </div>
-        <FormField label="Description">
-          <textarea className="input" rows={2} value={form.exam_description} onChange={f('exam_description')} placeholder="Optional description" />
+        <FormField label="Description" required>
+          <textarea
+            className={`input ${errors.exam_description ? 'border-red-400 focus:ring-red-400' : ''}`}
+            rows={2}
+            value={form.exam_description}
+            onChange={e => { setForm(p => ({ ...p, exam_description: e.target.value })); if (errors.exam_description) setErrors(p => ({ ...p, exam_description: '' })) }}
+            placeholder="Description"
+          />
+          {errors.exam_description && <p className="text-xs text-red-500 mt-1">{errors.exam_description}</p>}
         </FormField>
         <FormField label="Active">
           <label className="flex items-center gap-2 mt-1 cursor-pointer">

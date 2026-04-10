@@ -20,6 +20,7 @@ export default function IconPage() {
   const [modalOpen, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState({ name: '', category: '', icon_value: '', status: 'Active' })
+  const [errors, setErrors]   = useState({})
 
   const filtered = data.filter(ic =>
     ic.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -29,11 +30,20 @@ export default function IconPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
   const rows = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
-  const openAdd  = () => { setEditing(null); setForm({ name: '', category: '', icon_value: '', status: 'Active' }); setModal(true) }
-  const openEdit = (ic) => { setEditing(ic); setForm({ name: ic.name, category: ic.category, icon_value: ic.icon_value, status: ic.status }); setModal(true) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+  const openAdd  = () => { setEditing(null); setForm({ name: '', category: '', icon_value: '', status: 'Active' }); setErrors({}); setModal(true) }
+  const openEdit = (ic) => { setEditing(ic); setForm({ name: ic.name, category: ic.category, icon_value: ic.icon_value, status: ic.status }); setErrors({}); setModal(true) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = 'Icon name is required'
+    return e
+  }
 
   const handleSave = () => {
-    if (!form.name) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     if (editing) {
       setData(prev => prev.map(ic => ic.id === editing.id ? { ...ic, ...form } : ic))
     } else {
@@ -77,11 +87,12 @@ export default function IconPage() {
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModal(false)} title={editing ? 'Edit Icon' : 'Add Icon'}
-        footer={<><button onClick={() => setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}
+      <Modal open={modalOpen} onClose={closeModal} title={editing ? 'Edit Icon' : 'Add Icon'}
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}
       >
         <FormField label="Icon Name" required>
-          <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Dashboard Icon" />
+          <input className={`input ${errors.name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if(errors.name) setErrors(p=>({...p,name:''})) }} placeholder="e.g. Dashboard Icon" />
+          {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
         </FormField>
         <FormField label="Icon Value">
           <input className="input" value={form.icon_value} onChange={e => setForm(f => ({ ...f, icon_value: e.target.value }))} placeholder="e.g. layout-dashboard" />

@@ -11,6 +11,7 @@ export default function TransferPage() {
   const [transferring, setTransferring] = useState(false)
   const [success, setSuccess]       = useState('')
   const [error, setError]           = useState('')
+  const [errors, setErrors]         = useState({})
   const [students, setStudents]     = useState([])
   const [classes, setClasses]       = useState([])
   const [sections, setSections]     = useState([])
@@ -37,7 +38,11 @@ export default function TransferPage() {
 
   const handleTransfer = async (e) => {
     e.preventDefault()
-    if (!studentId || !sectionId) return
+    const ve = {}
+    if (!studentId) ve.studentId = 'Please select a student'
+    if (!sectionId) ve.sectionId = 'Please select a section'
+    if (Object.keys(ve).length) { setErrors(ve); return }
+    setErrors({})
     setTransferring(true)
     setSuccess('')
     setError('')
@@ -74,9 +79,9 @@ export default function TransferPage() {
         <form onSubmit={handleTransfer} className="space-y-4">
           <FormField label="Select Student" required>
             <select
-              className="input"
+              className={`input ${errors.studentId ? 'border-red-400 focus:ring-red-400' : ''}`}
               value={studentId}
-              onChange={e => setStudentId(e.target.value)}
+              onChange={e => { setStudentId(e.target.value); if(errors.studentId) setErrors(p=>({...p,studentId:''})) }}
             >
               <option value="">— Choose a student —</option>
               {students.map(s => (
@@ -86,6 +91,7 @@ export default function TransferPage() {
                 </option>
               ))}
             </select>
+            {errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId}</p>}
           </FormField>
 
           <FormField label="Transfer to Class" required>
@@ -101,9 +107,9 @@ export default function TransferPage() {
 
           <FormField label="Transfer to Section" required>
             <select
-              className="input"
+              className={`input ${errors.sectionId ? 'border-red-400 focus:ring-red-400' : ''}`}
               value={sectionId}
-              onChange={e => setSectionId(e.target.value)}
+              onChange={e => { setSectionId(e.target.value); if(errors.sectionId) setErrors(p=>({...p,sectionId:''})) }}
               disabled={!classId}
             >
               <option value="">— Choose target section —</option>
@@ -111,12 +117,13 @@ export default function TransferPage() {
                 <option key={s.section_id} value={s.section_id}>{s.section_name}</option>
               ))}
             </select>
+            {errors.sectionId && <p className="text-xs text-red-500 mt-1">{errors.sectionId}</p>}
           </FormField>
 
           <button
             type="submit"
             className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!studentId || !sectionId || transferring}
+            disabled={transferring}
           >
             <ArrowRightLeft className="w-4 h-4" />
             {transferring ? 'Transferring...' : 'Transfer Student'}

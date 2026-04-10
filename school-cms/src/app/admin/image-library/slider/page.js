@@ -9,12 +9,23 @@ export default function SliderPage() {
   const [modalOpen, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ title:'', subtitle:'', order:1, active:true })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
-  const openAdd = () => { setEditing(null); setForm({ title:'',subtitle:'',order:data.length+1,active:true }); setModal(true) }
-  const openEdit = (s) => { setEditing(s); setForm({ title:s.title,subtitle:s.subtitle,order:s.order,active:s.active }); setModal(true) }
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+  const openAdd = () => { setEditing(null); setForm({ title:'',subtitle:'',order:data.length+1,active:true }); setErrors({}); setModal(true) }
+  const openEdit = (s) => { setEditing(s); setForm({ title:s.title,subtitle:s.subtitle,order:s.order,active:s.active }); setErrors({}); setModal(true) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Title is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.title) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     if (editing) setData(p => p.map(s => s.id===editing.id ? {...s,...form} : s))
     else setData(p => [...p, {...form, id:Date.now()}])
     setModal(false)
@@ -48,10 +59,13 @@ export default function SliderPage() {
           ))}
         </Table>
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title={editing?'Edit Slide':'Add Slide'}
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title={editing?'Edit Slide':'Add Slide'}
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
         <div className="space-y-4">
-          <FormField label="Title" required><input className="input" value={form.title} onChange={f('title')} /></FormField>
+          <FormField label="Title" required>
+            <input className={`input ${errors.title ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.title} onChange={f('title')} />
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          </FormField>
           <FormField label="Subtitle"><input className="input" value={form.subtitle} onChange={f('subtitle')} /></FormField>
           <FormField label="Display Order"><input className="input" type="number" value={form.order} onChange={f('order')} /></FormField>
           <FormField label="Status">

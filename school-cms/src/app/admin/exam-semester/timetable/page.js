@@ -34,6 +34,7 @@ export default function ExamTimetablePage() {
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState(EMPTY_FORM)
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -61,6 +62,8 @@ export default function ExamTimetablePage() {
 
   useEffect(() => { fetchTimetable() }, [fetchTimetable])
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -78,11 +81,26 @@ export default function ExamTimetablePage() {
       end_ampm:         item.end_ampm         || 'PM',
       is_active:        item.is_active !== false,
     } : EMPTY_FORM)
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.exam_id) e.exam_id = 'Exam is required'
+    if (!form.school_stream_id) e.school_stream_id = 'Stream is required'
+    if (!form.school_group_id) e.school_group_id = 'Group is required'
+    if (!form.subject_id) e.subject_id = 'Subject is required'
+    if (!form.total_marks) e.total_marks = 'Total marks is required'
+    if (!form.pass_mark) e.pass_mark = 'Pass mark is required'
+    if (!form.exam_start_date) e.exam_start_date = 'Start date is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.exam_id || !form.school_stream_id || !form.school_group_id || !form.subject_id || !form.total_marks || !form.pass_mark || !form.exam_start_date) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       const payload = {
@@ -117,7 +135,10 @@ export default function ExamTimetablePage() {
     catch (e) { alert(e.message) }
   }
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => {
+    setForm(p => ({ ...p, [k]: e.target.value }))
+    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+  }
   const examName    = (id) => exams.find(e => e.exam_id === id)?.exam_name || (id ? `#${id}` : '—')
   const subjectName = (id) => subjects.find(s => (s.id ?? s.subject_id) === id)?.name || (id ? `#${id}` : '—')
 
@@ -177,52 +198,59 @@ export default function ExamTimetablePage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Timetable Entry' : 'Add Timetable Entry'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <FormField label="Exam" required>
-          <select className="input" value={form.exam_id} onChange={f('exam_id')}>
+          <select className={`input ${errors.exam_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.exam_id} onChange={f('exam_id')}>
             <option value="">— Select Exam —</option>
             {exams.map(e => <option key={e.exam_id} value={e.exam_id}>{e.exam_name}</option>)}
           </select>
+          {errors.exam_id && <p className="text-xs text-red-500 mt-1">{errors.exam_id}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Stream" required>
-            <select className="input" value={form.school_stream_id} onChange={f('school_stream_id')}>
+            <select className={`input ${errors.school_stream_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_stream_id} onChange={f('school_stream_id')}>
               <option value="">— Select Stream —</option>
               {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.name}</option>)}
             </select>
+            {errors.school_stream_id && <p className="text-xs text-red-500 mt-1">{errors.school_stream_id}</p>}
           </FormField>
           <FormField label="Group" required>
-            <select className="input" value={form.school_group_id} onChange={f('school_group_id')}>
+            <select className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_group_id} onChange={f('school_group_id')}>
               <option value="">— Select Group —</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
+            {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
           </FormField>
         </div>
         <FormField label="Subject" required>
-          <select className="input" value={form.subject_id} onChange={f('subject_id')}>
+          <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')}>
             <option value="">— Select Subject —</option>
             {subjects.map(s => <option key={s.id ?? s.subject_id} value={s.id ?? s.subject_id}>{s.name}</option>)}
           </select>
+          {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Total Marks" required>
-            <input className="input" type="number" value={form.total_marks} onChange={f('total_marks')} placeholder="e.g. 100" />
+            <input className={`input ${errors.total_marks ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.total_marks} onChange={f('total_marks')} placeholder="e.g. 100" />
+            {errors.total_marks && <p className="text-xs text-red-500 mt-1">{errors.total_marks}</p>}
           </FormField>
           <FormField label="Pass Mark" required>
-            <input className="input" type="number" value={form.pass_mark} onChange={f('pass_mark')} placeholder="e.g. 35" />
+            <input className={`input ${errors.pass_mark ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.pass_mark} onChange={f('pass_mark')} placeholder="e.g. 35" />
+            {errors.pass_mark && <p className="text-xs text-red-500 mt-1">{errors.pass_mark}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Exam Start Date/Time" required>
-            <input className="input" type="datetime-local" value={form.exam_start_date} onChange={f('exam_start_date')} />
+            <input className={`input ${errors.exam_start_date ? 'border-red-400 focus:ring-red-400' : ''}`} type="datetime-local" value={form.exam_start_date} onChange={f('exam_start_date')} />
+            {errors.exam_start_date && <p className="text-xs text-red-500 mt-1">{errors.exam_start_date}</p>}
           </FormField>
           <FormField label="Exam End Date/Time">
             <input className="input" type="datetime-local" value={form.exam_end_date} onChange={f('exam_end_date')} />

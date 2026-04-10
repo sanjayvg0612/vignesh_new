@@ -21,6 +21,7 @@ export default function AllStaffPage() {
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [roles, setRoles]     = useState([])
+  const [formErrors, setFormErrors] = useState({})
   const [form, setForm]       = useState({
     first_name: '', last_name: '', email: '', mobile: '',
     gender: 'male', qualification: '', address: '',
@@ -47,6 +48,7 @@ export default function AllStaffPage() {
 
   const openModal = async (item) => {
     setEditing(item)
+    setFormErrors({})
     setForm({
       first_name:    item.first_name    || '',
       last_name:     item.last_name     || '',
@@ -68,7 +70,10 @@ export default function AllStaffPage() {
   }
 
   const handleSave = async () => {
-    if (!form.first_name.trim() || !form.last_name.trim()) return
+    const fe = {}
+    if (!form.first_name.trim()) fe.first_name = 'First name is required'
+    if (!form.last_name.trim()) fe.last_name = 'Last name is required'
+    if (Object.keys(fe).length) { setFormErrors(fe); return }
     setSaving(true)
     try {
       const payload = {
@@ -87,6 +92,7 @@ export default function AllStaffPage() {
         is_active:     form.is_active,
       }
       await employeeApi.update(editing.emp_db_id ?? editing.id, payload)
+      setFormErrors({})
       setModal(false)
       fetchStaff()
     } catch (e) { alert(e.message) }
@@ -144,21 +150,23 @@ export default function AllStaffPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={() => { setModal(false); setFormErrors({}) }}
         title="Edit Staff"
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={() => { setModal(false); setFormErrors({}) }} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <div className="grid grid-cols-2 gap-3">
           <FormField label="First Name" required>
-            <input className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+            <input className={`input ${formErrors.first_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.first_name} onChange={e => { setForm(f => ({ ...f, first_name: e.target.value })); if(formErrors.first_name) setFormErrors(p=>({...p,first_name:''})) }} />
+            {formErrors.first_name && <p className="text-xs text-red-500 mt-1">{formErrors.first_name}</p>}
           </FormField>
           <FormField label="Last Name" required>
-            <input className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
+            <input className={`input ${formErrors.last_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.last_name} onChange={e => { setForm(f => ({ ...f, last_name: e.target.value })); if(formErrors.last_name) setFormErrors(p=>({...p,last_name:''})) }} />
+            {formErrors.last_name && <p className="text-xs text-red-500 mt-1">{formErrors.last_name}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">

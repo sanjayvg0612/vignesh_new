@@ -15,6 +15,7 @@ export default function GradePage() {
   const [modalOpen, setModal] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [form, setForm]       = useState({ grade: '', start_range: '', end_range: '' })
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -31,13 +32,25 @@ export default function GradePage() {
 
   useEffect(() => { fetchGrades() }, [fetchGrades])
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = () => {
     setForm({ grade: '', start_range: '', end_range: '' })
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.start_range) e.start_range = 'Start range is required'
+    if (!form.end_range) e.end_range = 'End range is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.start_range || !form.end_range) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       await gradeApi.create({
@@ -99,11 +112,11 @@ export default function GradePage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title="Add Grade"
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
@@ -113,10 +126,24 @@ export default function GradePage() {
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Start Range (%)" required>
-            <input className="input" type="number" step="0.01" min="0" max="100" value={form.start_range} onChange={f('start_range')} placeholder="e.g. 90" />
+            <input
+              className={`input ${errors.start_range ? 'border-red-400 focus:ring-red-400' : ''}`}
+              type="number" step="0.01" min="0" max="100"
+              value={form.start_range}
+              onChange={e => { setForm(p => ({ ...p, start_range: e.target.value })); if (errors.start_range) setErrors(p => ({ ...p, start_range: '' })) }}
+              placeholder="e.g. 90"
+            />
+            {errors.start_range && <p className="text-xs text-red-500 mt-1">{errors.start_range}</p>}
           </FormField>
           <FormField label="End Range (%)" required>
-            <input className="input" type="number" step="0.01" min="0" max="100" value={form.end_range} onChange={f('end_range')} placeholder="e.g. 100" />
+            <input
+              className={`input ${errors.end_range ? 'border-red-400 focus:ring-red-400' : ''}`}
+              type="number" step="0.01" min="0" max="100"
+              value={form.end_range}
+              onChange={e => { setForm(p => ({ ...p, end_range: e.target.value })); if (errors.end_range) setErrors(p => ({ ...p, end_range: '' })) }}
+              placeholder="e.g. 100"
+            />
+            {errors.end_range && <p className="text-xs text-red-500 mt-1">{errors.end_range}</p>}
           </FormField>
         </div>
       </Modal>

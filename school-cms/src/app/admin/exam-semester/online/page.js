@@ -28,6 +28,7 @@ export default function OnlineExamPage() {
     start_date: '', end_date: '',
     exam_code: '', url: '', duration: '',
   })
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -65,6 +66,8 @@ export default function OnlineExamPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -77,11 +80,23 @@ export default function OnlineExamPage() {
       url:        item.url        || '',
       duration:   item.duration   != null ? String(item.duration)   : '',
     } : { title: '', class_id: '', subject_id: '', start_date: '', end_date: '', exam_code: '', url: '', duration: '' })
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.class_id) e.class_id = 'Class is required'
+    if (!form.subject_id) e.subject_id = 'Subject is required'
+    if (!form.start_date) e.start_date = 'Start date is required'
+    if (!form.end_date) e.end_date = 'End date is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.class_id || !form.subject_id || !form.start_date || !form.end_date) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       const payload = {
@@ -92,7 +107,7 @@ export default function OnlineExamPage() {
         title:      form.title.trim()    || undefined,
         exam_code:  form.exam_code.trim()|| undefined,
         url:        form.url.trim()      || undefined,
-        duration:   form.duration.trim()  || undefined,
+        duration:   form.duration.trim() || undefined,
       }
       if (editing) {
         await onlineExamApi.update(editing.online_exam_id ?? editing.id, payload)
@@ -111,7 +126,10 @@ export default function OnlineExamPage() {
     catch (e) { alert(e.message) }
   }
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => {
+    setForm(p => ({ ...p, [k]: e.target.value }))
+    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+  }
   const className   = (id) => classes.find(c => c.id === id   || String(c.id) === String(id))?.name   || (id ? `#${id}` : '—')
   const subjectName = (id) => subjects.find(s => (s.id ?? s.subject_id) === id || String(s.id ?? s.subject_id) === String(id))?.name || (id ? `#${id}` : '—')
 
@@ -183,11 +201,11 @@ export default function OnlineExamPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Online Exam' : 'Add Online Exam'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
@@ -197,24 +215,28 @@ export default function OnlineExamPage() {
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Class" required>
-            <select className="input" value={form.class_id} onChange={f('class_id')}>
+            <select className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.class_id} onChange={f('class_id')}>
               <option value="">— Select Class —</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
           <FormField label="Subject" required>
-            <select className="input" value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
+            <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
               <option value="">— Select Subject —</option>
               {subjects.map(s => <option key={s.id ?? s.subject_id} value={s.id ?? s.subject_id}>{s.name}</option>)}
             </select>
+            {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Start Date" required>
-            <input className="input" type="date" value={form.start_date} onChange={f('start_date')} />
+            <input className={`input ${errors.start_date ? 'border-red-400 focus:ring-red-400' : ''}`} type="date" value={form.start_date} onChange={f('start_date')} />
+            {errors.start_date && <p className="text-xs text-red-500 mt-1">{errors.start_date}</p>}
           </FormField>
           <FormField label="End Date" required>
-            <input className="input" type="date" value={form.end_date} onChange={f('end_date')} />
+            <input className={`input ${errors.end_date ? 'border-red-400 focus:ring-red-400' : ''}`} type="date" value={form.end_date} onChange={f('end_date')} />
+            {errors.end_date && <p className="text-xs text-red-500 mt-1">{errors.end_date}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">

@@ -9,10 +9,21 @@ export default function AnnouncementPage() {
   const [data, setData] = useState(ANNOUNCEMENTS)
   const [modalOpen, setModal] = useState(false)
   const [form, setForm] = useState({ title:'', content:'', priority:'Normal', date:'' })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Title is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.title) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setData(p => [...p, { ...form, id:Date.now(), date: form.date || new Date().toISOString().split('T')[0] }])
     setModal(false)
   }
@@ -23,7 +34,7 @@ export default function AnnouncementPage() {
   return (
     <div>
       <PageHeader title="Announcements" subtitle="Post important announcements for the school community"
-        action={<button onClick={() => { setForm({ title:'',content:'',priority:'Normal',date:'' }); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Announcement</button>}
+        action={<button onClick={() => { setForm({ title:'',content:'',priority:'Normal',date:'' }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Announcement</button>}
       />
       <div className="space-y-3">
         {data.map(a => (
@@ -43,10 +54,13 @@ export default function AnnouncementPage() {
         ))}
         {data.length === 0 && <div className="card p-12 text-center text-sm text-gray-400">No announcements yet</div>}
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title="Add Announcement"
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Publish</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title="Add Announcement"
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Publish</button></>}>
         <div className="space-y-4">
-          <FormField label="Title" required><input className="input" value={form.title} onChange={f('title')} /></FormField>
+          <FormField label="Title" required>
+            <input className={`input ${errors.title ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.title} onChange={f('title')} />
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          </FormField>
           <FormField label="Content"><textarea className="input" rows={4} value={form.content} onChange={f('content')} /></FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Priority">

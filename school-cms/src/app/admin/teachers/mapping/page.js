@@ -19,6 +19,7 @@ export default function TeacherMappingPage() {
   const [editing, setEditing] = useState(null)
   const [teachers, setTeachers] = useState([])
   const [classes, setClasses]   = useState([])
+  const [formErrors, setFormErrors] = useState({})
   const [form, setForm] = useState({
     class_id: '', section_id: '', emp_id: '',
     teacher_type: 'class_teacher', subject_id: '',
@@ -74,6 +75,7 @@ export default function TeacherMappingPage() {
 
   const openModal = async (item = null) => {
     setEditing(item)
+    setFormErrors({})
     setForm(item ? {
       class_id:     String(item.class_id   || ''),
       section_id:   String(item.section_id || ''),
@@ -93,7 +95,10 @@ export default function TeacherMappingPage() {
   }
 
   const handleSave = async () => {
-    if (!form.class_id || !form.emp_id || !form.teacher_type) return
+    const fe = {}
+    if (!form.class_id) fe.class_id = 'Class is required'
+    if (!form.emp_id) fe.emp_id = 'Teacher is required'
+    if (Object.keys(fe).length) { setFormErrors(fe); return }
     setSaving(true)
     try {
       const payload = {
@@ -109,6 +114,7 @@ export default function TeacherMappingPage() {
       } else {
         await classSectionTeacherApi.create(payload)
       }
+      setFormErrors({})
       setModal(false)
       fetchMappings()
     } catch (e) { alert(e.message) }
@@ -165,29 +171,31 @@ export default function TeacherMappingPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={() => { setModal(false); setFormErrors({}) }}
         title={editing ? 'Edit Mapping' : 'Assign Teacher'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={() => { setModal(false); setFormErrors({}) }} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <FormField label="Class" required>
-          <select className="input" value={form.class_id} onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}>
+          <select className={`input ${formErrors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.class_id} onChange={e => { setForm(f => ({ ...f, class_id: e.target.value })); if(formErrors.class_id) setFormErrors(p=>({...p,class_id:''})) }}>
             <option value="">— Select Class —</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          {formErrors.class_id && <p className="text-xs text-red-500 mt-1">{formErrors.class_id}</p>}
         </FormField>
         <FormField label="Section ID">
           <input className="input" type="number" value={form.section_id} onChange={e => setForm(f => ({ ...f, section_id: e.target.value }))} placeholder="Leave blank if not applicable" />
         </FormField>
         <FormField label="Teacher" required>
-          <select className="input" value={form.emp_id} onChange={e => setForm(f => ({ ...f, emp_id: e.target.value }))}>
+          <select className={`input ${formErrors.emp_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.emp_id} onChange={e => { setForm(f => ({ ...f, emp_id: e.target.value })); if(formErrors.emp_id) setFormErrors(p=>({...p,emp_id:''})) }}>
             <option value="">— Select Teacher —</option>
             {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
+          {formErrors.emp_id && <p className="text-xs text-red-500 mt-1">{formErrors.emp_id}</p>}
         </FormField>
         <FormField label="Teacher Type" required>
           <select className="input" value={form.teacher_type} onChange={e => setForm(f => ({ ...f, teacher_type: e.target.value, subject_id: '' }))}>

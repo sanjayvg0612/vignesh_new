@@ -27,6 +27,7 @@ export default function MarksPage() {
   const [subjectRows, setSubjectRows] = useState([{ subject_id: '', mark: '' }])
   const [formStudentId, setFormStudentId] = useState('')
   const [formClassId, setFormClassId]     = useState('')
+  const [errors, setErrors]               = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -76,17 +77,33 @@ export default function MarksPage() {
     setFormStudentId(filterStudentId || '')
     setFormClassId(filterClassId || '')
     setSubjectRows([{ subject_id: '', mark: '' }])
+    setErrors({})
     setModal(true)
   }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const addRow = () => setSubjectRows(p => [...p, { subject_id: '', mark: '' }])
   const removeRow = (i) => setSubjectRows(p => p.filter((_, idx) => idx !== i))
-  const updateRow = (i, key, val) => setSubjectRows(p => p.map((r, idx) => idx === i ? { ...r, [key]: val } : r))
+  const updateRow = (i, key, val) => {
+    setSubjectRows(p => p.map((r, idx) => idx === i ? { ...r, [key]: val } : r))
+    if (errors.subjectRows) setErrors(p => ({ ...p, subjectRows: '' }))
+  }
+
+  const validate = () => {
+    const e = {}
+    if (!formClassId) e.formClassId = 'Class is required'
+    if (!formStudentId) e.formStudentId = 'Student is required'
+    const validRows = subjectRows.filter(r => r.subject_id && r.mark !== '')
+    if (!validRows.length) e.subjectRows = 'At least one subject with a mark is required'
+    return e
+  }
 
   const handleSave = async () => {
-    if (!formStudentId || !formClassId) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     const validRows = subjectRows.filter(r => r.subject_id && r.mark !== '')
-    if (!validRows.length) return
     setSaving(true)
     try {
       await marksApi.create({
@@ -166,31 +183,47 @@ export default function MarksPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title="Add Marks"
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Marks'}</button>
           </>
         }
       >
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Class" required>
-            <select className="input" value={formClassId} onChange={e => setFormClassId(e.target.value)}>
+            <select
+              className={`input ${errors.formClassId ? 'border-red-400 focus:ring-red-400' : ''}`}
+              value={formClassId}
+              onChange={e => { setFormClassId(e.target.value); if (errors.formClassId) setErrors(p => ({ ...p, formClassId: '' })) }}
+            >
               <option value="">— Select Class —</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {errors.formClassId && <p className="text-xs text-red-500 mt-1">{errors.formClassId}</p>}
           </FormField>
           <FormField label="Student" required>
             {students.length > 0 ? (
-              <select className="input" value={formStudentId} onChange={e => setFormStudentId(e.target.value)}>
+              <select
+                className={`input ${errors.formStudentId ? 'border-red-400 focus:ring-red-400' : ''}`}
+                value={formStudentId}
+                onChange={e => { setFormStudentId(e.target.value); if (errors.formStudentId) setErrors(p => ({ ...p, formStudentId: '' })) }}
+              >
                 <option value="">— Select Student —</option>
                 {students.map(s => <option key={s.student_id} value={s.student_id}>{s.first_name} {s.last_name}</option>)}
               </select>
             ) : (
-              <input className="input" type="number" value={formStudentId} onChange={e => setFormStudentId(e.target.value)} placeholder="Student ID" />
+              <input
+                className={`input ${errors.formStudentId ? 'border-red-400 focus:ring-red-400' : ''}`}
+                type="number"
+                value={formStudentId}
+                onChange={e => { setFormStudentId(e.target.value); if (errors.formStudentId) setErrors(p => ({ ...p, formStudentId: '' })) }}
+                placeholder="Student ID"
+              />
             )}
+            {errors.formStudentId && <p className="text-xs text-red-500 mt-1">{errors.formStudentId}</p>}
           </FormField>
         </div>
 
@@ -199,6 +232,7 @@ export default function MarksPage() {
             <p className="text-xs font-medium text-gray-600">Subjects &amp; Marks</p>
             <button type="button" onClick={addRow} className="text-xs text-primary-600 hover:underline">+ Add Subject</button>
           </div>
+          {errors.subjectRows && <p className="text-xs text-red-500 mb-2">{errors.subjectRows}</p>}
           <div className="space-y-2">
             {subjectRows.map((row, idx) => (
               <div key={idx} className="flex gap-2 items-center">

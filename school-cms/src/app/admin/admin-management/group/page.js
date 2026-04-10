@@ -21,6 +21,7 @@ export default function GroupPage() {
   const [saving, setSaving]     = useState(false)
   const [editing, setEditing]   = useState(null)
   const [form, setForm]         = useState({ group_name: '', status: 'Active' })
+  const [errors, setErrors]     = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -41,23 +42,34 @@ export default function GroupPage() {
 
   useEffect(() => { fetchGroups() }, [fetchGroups])
 
-  // Debounce search — reset to page 1
   const handleSearch = (v) => { setSearch(v); setPage(1) }
+
+  const closeModal = () => { setModal(false); setErrors({}) }
 
   const openAdd = () => {
     setEditing(null)
     setForm({ group_name: '', status: 'Active' })
+    setErrors({})
     setModal(true)
   }
 
   const openEdit = (g) => {
     setEditing(g)
     setForm({ group_name: g.group_name, status: toUiStatus(g.status) })
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.group_name.trim()) e.group_name = 'Group name is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.group_name.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -138,11 +150,11 @@ export default function GroupPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Group' : 'Add Group'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
@@ -151,11 +163,12 @@ export default function GroupPage() {
       >
         <FormField label="Group Name" required>
           <input
-            className="input"
+            className={`input ${errors.group_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.group_name}
-            onChange={e => setForm(f => ({ ...f, group_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, group_name: e.target.value })); if (errors.group_name) setErrors(p => ({ ...p, group_name: '' })) }}
             placeholder="e.g. Primary"
           />
+          {errors.group_name && <p className="text-xs text-red-500 mt-1">{errors.group_name}</p>}
         </FormField>
         <FormField label="Status">
           <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

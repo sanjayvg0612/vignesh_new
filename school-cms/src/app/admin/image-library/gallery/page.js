@@ -10,10 +10,21 @@ export default function GalleryPage() {
   const [data, setData] = useState(GALLERY)
   const [modalOpen, setModal] = useState(false)
   const [form, setForm] = useState({ title:'', category:'Events', date:'', images:0 })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Album title is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.title) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setData(p => [...p, { ...form, id: Date.now(), images: Number(form.images) }])
     setModal(false)
   }
@@ -24,7 +35,7 @@ export default function GalleryPage() {
   return (
     <div>
       <PageHeader title="Gallery" subtitle="Manage school photo albums and collections"
-        action={<button onClick={() => { setForm({ title:'',category:'Events',date:'',images:0 }); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Album</button>}
+        action={<button onClick={() => { setForm({ title:'',category:'Events',date:'',images:0 }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Album</button>}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {data.map(g => (
@@ -46,10 +57,13 @@ export default function GalleryPage() {
           </div>
         ))}
       </div>
-      <Modal open={modalOpen} onClose={() => setModal(false)} title="Add Album"
-        footer={<><button onClick={() => setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title="Add Album"
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
         <div className="space-y-4">
-          <FormField label="Album Title" required><input className="input" value={form.title} onChange={f('title')} /></FormField>
+          <FormField label="Album Title" required>
+            <input className={`input ${errors.title ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.title} onChange={f('title')} />
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          </FormField>
           <FormField label="Category">
             <select className="input" value={form.category} onChange={f('category')}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select>
           </FormField>

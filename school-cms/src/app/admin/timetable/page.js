@@ -37,6 +37,7 @@ export default function TimetablePage() {
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState(EMPTY_FORM)
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -84,6 +85,8 @@ export default function TimetablePage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -100,12 +103,26 @@ export default function TimetablePage() {
       end_ampm:          item.end_ampm          || 'AM',
       duration:          item.duration          != null ? String(item.duration) : '',
     } : EMPTY_FORM)
+    setErrors({})
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.school_group_id) e.school_group_id = 'Group is required'
+    if (!form.class_id) e.class_id = 'Class is required'
+    if (!form.section_id) e.section_id = 'Section is required'
+    if (!form.subject_id) e.subject_id = 'Subject is required'
+    if (!form.start_time) e.start_time = 'Start time is required'
+    if (!form.end_time) e.end_time = 'End time is required'
+    if (!form.duration) e.duration = 'Duration is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.class_id || !form.section_id || !form.school_group_id || !form.subject_id ||
-        !form.start_time || !form.end_time || !form.duration) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       const payload = {
@@ -141,7 +158,10 @@ export default function TimetablePage() {
     catch (e) { alert(e.message) }
   }
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => {
+    setForm(p => ({ ...p, [k]: e.target.value }))
+    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+  }
 
   return (
     <div>
@@ -223,11 +243,11 @@ export default function TimetablePage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Timetable Entry' : 'Add Timetable Entry'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
@@ -237,30 +257,34 @@ export default function TimetablePage() {
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Group" required>
-            <select className="input" value={form.school_group_id} onChange={f('school_group_id')}>
+            <select className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_group_id} onChange={f('school_group_id')}>
               <option value="">— Select Group —</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
+            {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
           </FormField>
           <FormField label="Class" required>
-            <select className="input" value={form.class_id} onChange={f('class_id')}>
+            <select className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.class_id} onChange={f('class_id')}>
               <option value="">— Select Class —</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Section" required>
-            <select className="input" value={form.section_id} onChange={f('section_id')} disabled={!form.class_id}>
+            <select className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.section_id} onChange={f('section_id')} disabled={!form.class_id}>
               <option value="">— Select Section —</option>
               {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+            {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
           </FormField>
           <FormField label="Subject" required>
-            <select className="input" value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
+            <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
               <option value="">— Select Subject —</option>
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+            {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
           </FormField>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -278,23 +302,26 @@ export default function TimetablePage() {
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Start Time" required>
             <div className="flex gap-2">
-              <input className="input flex-1" type="time" value={form.start_time} onChange={f('start_time')} />
+              <input className={`input flex-1 ${errors.start_time ? 'border-red-400 focus:ring-red-400' : ''}`} type="time" value={form.start_time} onChange={f('start_time')} />
               <select className="input w-20" value={form.start_ampm} onChange={f('start_ampm')}>
                 {AMPM.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
+            {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
           </FormField>
           <FormField label="End Time" required>
             <div className="flex gap-2">
-              <input className="input flex-1" type="time" value={form.end_time} onChange={f('end_time')} />
+              <input className={`input flex-1 ${errors.end_time ? 'border-red-400 focus:ring-red-400' : ''}`} type="time" value={form.end_time} onChange={f('end_time')} />
               <select className="input w-20" value={form.end_ampm} onChange={f('end_ampm')}>
                 {AMPM.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
+            {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
           </FormField>
         </div>
         <FormField label="Duration (minutes)" required>
-          <input className="input" type="number" min="1" value={form.duration} onChange={f('duration')} placeholder="e.g. 60" />
+          <input className={`input ${errors.duration ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" min="1" value={form.duration} onChange={f('duration')} placeholder="e.g. 60" />
+          {errors.duration && <p className="text-xs text-red-500 mt-1">{errors.duration}</p>}
         </FormField>
       </Modal>
     </div>

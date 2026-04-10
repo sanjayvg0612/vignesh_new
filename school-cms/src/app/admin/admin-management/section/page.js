@@ -21,6 +21,7 @@ export default function SectionPage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState({ section_name: '', section_code: '', class_id: '', status: 'Active' })
   const [classes, setClasses] = useState([])
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -43,6 +44,8 @@ export default function SectionPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = async (section = null) => {
     setEditing(section)
     setForm(section ? {
@@ -51,6 +54,7 @@ export default function SectionPage() {
       class_id:     String(section.class_id),
       status:       toUiStatus(section.status),
     } : { section_name: '', section_code: '', class_id: '', status: 'Active' })
+    setErrors({})
     try {
       const res = await classApi.dropdown()
       setClasses(res.result || [])
@@ -58,8 +62,18 @@ export default function SectionPage() {
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!editing && !form.class_id) e.class_id = 'Class is required'
+    if (!form.section_code.trim()) e.section_code = 'Section code is required'
+    if (!form.section_name.trim()) e.section_name = 'Section name is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.section_name.trim() || !form.section_code.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -145,46 +159,49 @@ export default function SectionPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Section' : 'Add Section'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
           </>
         }
       >
-                {!editing && (
+        {!editing && (
           <FormField label="Class" required>
             <select
-              className="input"
+              className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
               value={form.class_id}
-              onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}
+              onChange={e => { setForm(f => ({ ...f, class_id: e.target.value })); if (errors.class_id) setErrors(p => ({ ...p, class_id: '' })) }}
             >
               <option value="">— Select Class —</option>
               {classes.map(c => (
                 <option key={c.class_id} value={c.class_id}>{c.class_code} {c.stream_name && ` - ${c.stream_name}`}</option>
               ))}
             </select>
+            {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
         )}
-                <FormField label="Section Code" required>
+        <FormField label="Section Code" required>
           <input
-            className="input"
+            className={`input ${errors.section_code ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.section_code}
-            onChange={e => setForm(f => ({ ...f, section_code: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, section_code: e.target.value })); if (errors.section_code) setErrors(p => ({ ...p, section_code: '' })) }}
             placeholder="e.g. A"
           />
+          {errors.section_code && <p className="text-xs text-red-500 mt-1">{errors.section_code}</p>}
         </FormField>
         <FormField label="Section Name" required>
           <input
-            className="input"
+            className={`input ${errors.section_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.section_name}
-            onChange={e => setForm(f => ({ ...f, section_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, section_name: e.target.value })); if (errors.section_name) setErrors(p => ({ ...p, section_name: '' })) }}
             placeholder="e.g. Rose"
           />
+          {errors.section_name && <p className="text-xs text-red-500 mt-1">{errors.section_name}</p>}
         </FormField>
         <FormField label="Status">
           <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

@@ -23,6 +23,7 @@ export default function StreamPage() {
     stream_name: '', stream_code: '', school_group_id: '', status: 'Active',
   })
   const [groups, setGroups]   = useState([])
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -45,6 +46,8 @@ export default function StreamPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = async (stream = null) => {
     setEditing(stream)
     setForm(stream ? {
@@ -53,6 +56,7 @@ export default function StreamPage() {
       school_group_id: String(stream.school_group_id),
       status:          toUiStatus(stream.status),
     } : { stream_name: '', stream_code: '', school_group_id: '', status: 'Active' })
+    setErrors({})
     try {
       const res = await groupApi.dropdown()
       setGroups(res.result || [])
@@ -60,8 +64,17 @@ export default function StreamPage() {
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.school_group_id) e.school_group_id = 'Group is required'
+    if (!form.stream_name.trim()) e.stream_name = 'Stream name is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.stream_name.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -116,7 +129,7 @@ export default function StreamPage() {
           <span className="text-sm text-gray-500">{total} records</span>
         </div>
 
-        <Table headers={['Sl No.', 'Stream Name',  'Group', 'Status', 'Actions']} empty={!loading && data.length === 0}>
+        <Table headers={['Sl No.', 'Stream Name', 'Group', 'Status', 'Actions']} empty={!loading && data.length === 0}>
           {loading ? (
             <tr>
               <td colSpan={6} className="table-td text-center text-gray-400 py-8">Loading...</td>
@@ -146,36 +159,38 @@ export default function StreamPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Stream' : 'Add Stream'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
           </>
         }
       >
-          <FormField label="Group" required>
+        <FormField label="Group" required>
           <select
-            className="input"
+            className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.school_group_id}
-            onChange={e => setForm(f => ({ ...f, school_group_id: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, school_group_id: e.target.value })); if (errors.school_group_id) setErrors(p => ({ ...p, school_group_id: '' })) }}
           >
             <option value="">— Select Group —</option>
             {groups.map(g => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
+          {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
         </FormField>
         <FormField label="Stream Name" required>
           <input
-            className="input"
+            className={`input ${errors.stream_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.stream_name}
-            onChange={e => setForm(f => ({ ...f, stream_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, stream_name: e.target.value })); if (errors.stream_name) setErrors(p => ({ ...p, stream_name: '' })) }}
             placeholder="e.g. Science"
           />
+          {errors.stream_name && <p className="text-xs text-red-500 mt-1">{errors.stream_name}</p>}
         </FormField>
         <FormField label="Status">
           <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

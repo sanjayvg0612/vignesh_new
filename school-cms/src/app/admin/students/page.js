@@ -20,6 +20,7 @@ export default function StudentsPage() {
   const [modalOpen, setModal] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
+  const [formErrors, setFormErrors] = useState({})
   const [form, setForm]       = useState({
     first_name: '', last_name: '', email: '', phone: '',
     gender: 'male', status: 'Active',
@@ -48,6 +49,7 @@ export default function StudentsPage() {
 
   const openEdit = (s) => {
     setEditing(s)
+    setFormErrors({})
     setForm({
       first_name: s.first_name,
       last_name:  s.last_name  || '',
@@ -60,7 +62,7 @@ export default function StudentsPage() {
   }
 
   const handleSave = async () => {
-    if (!form.first_name.trim()) return
+    if (!form.first_name.trim()) { setFormErrors({ first_name: 'First name is required' }); return }
     setSaving(true)
     try {
       await studentApi.update(editing.student_id, {
@@ -71,6 +73,7 @@ export default function StudentsPage() {
         gender:     form.gender,
         status:     toApiStatus(form.status),
       })
+      setFormErrors({})
       setModal(false)
       fetchStudents()
     } catch (e) {
@@ -142,11 +145,11 @@ export default function StudentsPage() {
       {/* Edit Modal — basic fields only */}
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={() => { setModal(false); setFormErrors({}) }}
         title="Edit Student"
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={() => { setModal(false); setFormErrors({}) }} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
@@ -155,8 +158,9 @@ export default function StudentsPage() {
       >
         <div className="grid grid-cols-2 gap-3">
           <FormField label="First Name" required>
-            <input className="input" value={form.first_name}
-              onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+            <input className={`input ${formErrors.first_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.first_name}
+              onChange={e => { setForm(f => ({ ...f, first_name: e.target.value })); if(formErrors.first_name) setFormErrors({}) }} />
+            {formErrors.first_name && <p className="text-xs text-red-500 mt-1">{formErrors.first_name}</p>}
           </FormField>
           <FormField label="Last Name">
             <input className="input" value={form.last_name}

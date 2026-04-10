@@ -8,9 +8,20 @@ export default function EventPage() {
   const [data, setData] = useState(EVENTS)
   const [modalOpen, setModal] = useState(false)
   const [form, setForm] = useState({ title:'', date:'', venue:'', organizer:'', status:'Upcoming' })
+  const [errors, setErrors] = useState({})
+
+  const closeModal = () => { setModal(false); setErrors({}) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Event title is required'
+    return e
+  }
 
   const handleSave = () => {
-    if (!form.title) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setData(p => [...p, { ...form, id: Date.now() }])
     setModal(false)
   }
@@ -19,7 +30,7 @@ export default function EventPage() {
   return (
     <div>
       <PageHeader title="Events" subtitle="Manage school events and activities"
-        action={<button onClick={() => { setForm({ title:'',date:'',venue:'',organizer:'',status:'Upcoming' }); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Event</button>}
+        action={<button onClick={() => { setForm({ title:'',date:'',venue:'',organizer:'',status:'Upcoming' }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Event</button>}
       />
       <div className="card">
         <Table headers={['#','Title','Date','Venue','Organizer','Status','Actions']} empty={data.length===0}>
@@ -36,10 +47,13 @@ export default function EventPage() {
           ))}
         </Table>
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title="Add Event"
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title="Add Event"
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
         <div className="space-y-4">
-          <FormField label="Event Title" required><input className="input" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} /></FormField>
+          <FormField label="Event Title" required>
+            <input className={`input ${errors.title ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.title} onChange={e => { setForm({...form,title:e.target.value}); if(errors.title) setErrors(p=>({...p,title:''})) }} />
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          </FormField>
           <FormField label="Date"><input className="input" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} /></FormField>
           <FormField label="Venue"><input className="input" value={form.venue} onChange={e=>setForm({...form,venue:e.target.value})} /></FormField>
           <FormField label="Organizer"><input className="input" value={form.organizer} onChange={e=>setForm({...form,organizer:e.target.value})} /></FormField>

@@ -5,7 +5,6 @@ import { PageHeader, Table, Pagination, Modal, FormField } from '@/components/ui
 import { classSectionTeacherApi, employeeApi, classApi, subjectApi } from '@/lib/api'
 
 const PER_PAGE = 10
-const SCHOOL_ID = 1
 
 export default function SubjectTeacherPage() {
   const [rows, setRows]       = useState([])
@@ -20,6 +19,7 @@ export default function SubjectTeacherPage() {
   const [classes, setClasses]   = useState([])
   const [subjects, setSubjects] = useState([])
   const [form, setForm]         = useState({ class_id: '', emp_id: '', subject_id: '' })
+  const [errors, setErrors]     = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -62,6 +62,8 @@ export default function SubjectTeacherPage() {
       .catch(() => setSubjects([]))
   }, [form.class_id])
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = async (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -69,6 +71,7 @@ export default function SubjectTeacherPage() {
       emp_id:     String(item.emp_id     || ''),
       subject_id: String(item.subject_id || ''),
     } : { class_id: '', emp_id: '', subject_id: '' })
+    setErrors({})
     try {
       const [teacherRes, classRes] = await Promise.all([
         employeeApi.dropdown(),
@@ -80,8 +83,18 @@ export default function SubjectTeacherPage() {
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!form.class_id) e.class_id = 'Class is required'
+    if (!form.subject_id) e.subject_id = 'Subject is required'
+    if (!form.emp_id) e.emp_id = 'Teacher is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.class_id || !form.emp_id || !form.subject_id) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       const payload = {
@@ -106,7 +119,10 @@ export default function SubjectTeacherPage() {
     catch (e) { alert(e.message) }
   }
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => {
+    setForm(p => ({ ...p, [k]: e.target.value }))
+    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+  }
 
   return (
     <div>
@@ -147,33 +163,40 @@ export default function SubjectTeacherPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Subject Teacher' : 'Assign Subject Teacher'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
           </>
         }
       >
         <FormField label="Class" required>
-          <select className="input" value={form.class_id} onChange={e => setForm(p => ({ ...p, class_id: e.target.value, subject_id: '' }))}>
+          <select
+            className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.class_id}
+            onChange={e => { setForm(p => ({ ...p, class_id: e.target.value, subject_id: '' })); if (errors.class_id) setErrors(p => ({ ...p, class_id: '' })) }}
+          >
             <option value="">— Select Class —</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
         </FormField>
         <FormField label="Subject" required>
-          <select className="input" value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
+          <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
             <option value="">— Select Subject —</option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           {!form.class_id && <p className="text-xs text-gray-400 mt-1">Select a class first to load subjects</p>}
+          {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
         </FormField>
         <FormField label="Teacher" required>
-          <select className="input" value={form.emp_id} onChange={f('emp_id')}>
+          <select className={`input ${errors.emp_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.emp_id} onChange={f('emp_id')}>
             <option value="">— Select Teacher —</option>
             {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
+          {errors.emp_id && <p className="text-xs text-red-500 mt-1">{errors.emp_id}</p>}
         </FormField>
       </Modal>
     </div>

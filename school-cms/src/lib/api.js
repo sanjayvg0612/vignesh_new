@@ -338,6 +338,109 @@ export const studentAttendanceApi = {
   delete:     (id)       => request('DELETE', `/api/attendance/student/attendance/delete/${id}`),
 }
 
+// ── TRANSPORT VEHICLE ─────────────────────────────────────────────────────────
+
+export const vehicleApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)   q.set('page',   params.page)
+    if (params.limit)  q.set('limit',  params.limit)
+    if (params.search) q.set('search', params.search)
+    if (params.status) q.set('status', params.status)
+    return request('GET', `/api/transport/vehicle/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/transport/vehicle/get/${id}`),
+  create:  (body)        => request('POST', '/api/transport/vehicle/create', body),
+  update:  (id, body)    => request('PUT', `/api/transport/vehicle/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/transport/vehicle/delete/${id}`),
+}
+
+// ── TRANSPORT ROUTE ───────────────────────────────────────────────────────────
+
+export const routeApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)   q.set('page',   params.page)
+    if (params.limit)  q.set('limit',  params.limit)
+    if (params.search) q.set('search', params.search)
+    if (params.status) q.set('status', params.status)
+    return request('GET', `/api/transport/route/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/transport/route/get/${id}`),
+  create:  (body)        => request('POST', '/api/transport/route/create', body),
+  update:  (id, body)    => request('PUT', `/api/transport/route/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/transport/route/delete/${id}`),
+}
+
+// ── TRANSPORT VEHICLE ROUTE MAP ───────────────────────────────────────────────
+
+export const vehicleRouteMapApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)       q.set('page',       params.page)
+    if (params.limit)      q.set('limit',      params.limit)
+    if (params.route_id)   q.set('route_id',   params.route_id)
+    if (params.vehicle_id) q.set('vehicle_id', params.vehicle_id)
+    return request('GET', `/api/transport/vehicle_route_map/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/transport/vehicle_route_map/get/${id}`),
+  create:  (body)        => request('POST', '/api/transport/vehicle_route_map/create', body),
+  update:  (id, body)    => request('PUT', `/api/transport/vehicle_route_map/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/transport/vehicle_route_map/delete/${id}`),
+}
+
+// ── TRANSPORT STUDENT ─────────────────────────────────────────────────────────
+
+export const transportStudentApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)       q.set('page',       params.page)
+    if (params.limit)      q.set('limit',      params.limit)
+    if (params.vehicle_id) q.set('vehicle_id', params.vehicle_id)
+    if (params.class_id)   q.set('class_id',   params.class_id)
+    if (params.section_id) q.set('section_id', params.section_id)
+    if (params.student_id) q.set('student_id', params.student_id)
+    if (params.group_id)   q.set('group_id',   params.group_id)
+    if (params.session_yr) q.set('session_yr', params.session_yr)
+    return request('GET', `/api/transport/transportation_student/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/transport/transportation_student/get/${id}`),
+  create:  (body)        => request('POST', '/api/transport/transportation_student/create', body),
+  update:  (id, body)    => request('PUT', `/api/transport/transportation_student/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/transport/transportation_student/delete/${id}`),
+}
+
+// ── VEHICLE EXPENSE ───────────────────────────────────────────────────────────
+
+async function multipartRequest(method, path, payload, imageFile = null) {
+  const form = new FormData()
+  form.append('payload', JSON.stringify(payload))
+  if (imageFile) form.append('image', imageFile)
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: { 'client_key': CLIENT_KEY },
+    body: form,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.message || `Request failed: ${res.status}`)
+  return data
+}
+
+export const vehicleExpenseApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)       q.set('page',       params.page)
+    if (params.limit)      q.set('limit',      params.limit)
+    if (params.vehicle_id) q.set('vehicle_id', params.vehicle_id)
+    if (params.session_yr) q.set('session_yr', params.session_yr)
+    return request('GET', `/api/transport/vehicle_expense/list?${q}`)
+  },
+  getById: (id)                    => request('GET', `/api/transport/vehicle_expense/get/${id}`),
+  create:  (payload, imageFile)    => multipartRequest('POST', '/api/transport/vehicle_expense/create', payload, imageFile),
+  update:  (id, payload, imageFile)=> multipartRequest('PUT', `/api/transport/vehicle_expense/update/${id}`, payload, imageFile),
+  delete:  (id)                    => request('DELETE', `/api/transport/vehicle_expense/delete/${id}`),
+}
+
 // ── STUDENT INQUIRY ──────────────────────────────────────────────────────────
 
 function qsInquiry(params = {}) {

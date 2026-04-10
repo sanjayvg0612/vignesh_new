@@ -9,10 +9,21 @@ export default function NotificationPage() {
   const [data, setData] = useState(NOTIFICATIONS)
   const [modalOpen, setModal] = useState(false)
   const [form, setForm] = useState({ title:'', message:'', type:'Info', sent_to:'All' })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.title.trim()) e.title = 'Title is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.title) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setData(p => [...p, { ...form, id:Date.now(), date:new Date().toISOString().split('T')[0], sent:false }])
     setModal(false)
   }
@@ -24,7 +35,7 @@ export default function NotificationPage() {
   return (
     <div>
       <PageHeader title="Notifications" subtitle="Send push notifications to students, parents and staff"
-        action={<button onClick={() => { setForm({ title:'',message:'',type:'Info',sent_to:'All' }); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> New Notification</button>}
+        action={<button onClick={() => { setForm({ title:'',message:'',type:'Info',sent_to:'All' }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> New Notification</button>}
       />
       <div className="card">
         <Table headers={['#','Title','Message','Type','Sent To','Date','Status','Actions']} empty={data.length===0}>
@@ -45,10 +56,13 @@ export default function NotificationPage() {
           ))}
         </Table>
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title="New Notification"
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save as Draft</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title="New Notification"
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save as Draft</button></>}>
         <div className="space-y-4">
-          <FormField label="Title" required><input className="input" value={form.title} onChange={f('title')} /></FormField>
+          <FormField label="Title" required>
+            <input className={`input ${errors.title ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.title} onChange={f('title')} />
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          </FormField>
           <FormField label="Message"><textarea className="input" rows={3} value={form.message} onChange={f('message')} /></FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Type">

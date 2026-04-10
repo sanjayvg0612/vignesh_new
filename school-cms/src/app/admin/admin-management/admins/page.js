@@ -9,12 +9,24 @@ export default function AdminsPage() {
   const [modalOpen, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name:'', email:'', phone:'', role:'Admin', status:'Active' })
+  const [errors, setErrors] = useState({})
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
-  const openAdd = () => { setEditing(null); setForm({ name:'',email:'',phone:'',role:'Admin',status:'Active' }); setModal(true) }
-  const openEdit = (a) => { setEditing(a); setForm({ name:a.name,email:a.email,phone:a.phone,role:a.role,status:a.status }); setModal(true) }
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+  const closeModal = () => { setModal(false); setErrors({}) }
+  const openAdd = () => { setEditing(null); setForm({ name:'',email:'',phone:'',role:'Admin',status:'Active' }); setErrors({}); setModal(true) }
+  const openEdit = (a) => { setEditing(a); setForm({ name:a.name,email:a.email,phone:a.phone,role:a.role,status:a.status }); setErrors({}); setModal(true) }
+
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = 'Full name is required'
+    if (!form.email.trim()) e.email = 'Email is required'
+    return e
+  }
+
   const handleSave = () => {
-    if (!form.name || !form.email) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     if (editing) setData(p => p.map(a => a.id===editing.id ? {...a,...form} : a))
     else setData(p => [...p, {...form, id:Date.now(), last_login:'—'}])
     setModal(false)
@@ -45,11 +57,17 @@ export default function AdminsPage() {
           ))}
         </Table>
       </div>
-      <Modal open={modalOpen} onClose={()=>setModal(false)} title={editing?'Edit Admin':'Add Admin'}
-        footer={<><button onClick={()=>setModal(false)} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
+      <Modal open={modalOpen} onClose={closeModal} title={editing?'Edit Admin':'Add Admin'}
+        footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary">Save</button></>}>
         <div className="space-y-4">
-          <FormField label="Full Name" required><input className="input" value={form.name} onChange={f('name')} /></FormField>
-          <FormField label="Email" required><input className="input" type="email" value={form.email} onChange={f('email')} /></FormField>
+          <FormField label="Full Name" required>
+            <input className={`input ${errors.name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.name} onChange={f('name')} />
+            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+          </FormField>
+          <FormField label="Email" required>
+            <input className={`input ${errors.email ? 'border-red-400 focus:ring-red-400' : ''}`} type="email" value={form.email} onChange={f('email')} />
+            {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+          </FormField>
           <FormField label="Phone"><input className="input" value={form.phone} onChange={f('phone')} /></FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Role">

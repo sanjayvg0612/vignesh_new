@@ -24,6 +24,7 @@ export default function ClassPage() {
   })
   const [groups, setGroups]   = useState([])
   const [streams, setStreams] = useState([])
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -46,6 +47,8 @@ export default function ClassPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = async (cls = null) => {
     setEditing(cls)
     setForm(cls ? {
@@ -55,6 +58,7 @@ export default function ClassPage() {
       school_stream_id: cls.school_stream_id ? String(cls.school_stream_id) : '',
       status:           toUiStatus(cls.status),
     } : { class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active' })
+    setErrors({})
     try {
       const [groupRes, streamRes] = await Promise.all([
         groupApi.dropdown(),
@@ -68,10 +72,20 @@ export default function ClassPage() {
 
   const handleGroupChange = (groupId) => {
     setForm(f => ({ ...f, school_group_id: groupId, school_stream_id: '' }))
+    if (errors.school_group_id) setErrors(p => ({ ...p, school_group_id: '' }))
+  }
+
+  const validate = () => {
+    const e = {}
+    if (!form.school_group_id) e.school_group_id = 'Group is required'
+    if (!form.class_code.trim()) e.class_code = 'Class code is required'
+    return e
   }
 
   const handleSave = async () => {
-    if (!form.class_code.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -160,20 +174,20 @@ export default function ClassPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Class' : 'Add Class'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
           </>
         }
       >
-            <FormField label="Group" required>
+        <FormField label="Group" required>
           <select
-            className="input"
+            className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.school_group_id}
             onChange={e => handleGroupChange(e.target.value)}
           >
@@ -182,8 +196,9 @@ export default function ClassPage() {
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
+          {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
         </FormField>
-          <FormField label="Stream">
+        <FormField label="Stream">
           <select
             className="input"
             value={form.school_stream_id}
@@ -197,13 +212,13 @@ export default function ClassPage() {
         </FormField>
         <FormField label="Class Code" required>
           <input
-            className="input"
+            className={`input ${errors.class_code ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.class_code}
-            onChange={e => setForm(f => ({ ...f, class_code: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, class_code: e.target.value })); if (errors.class_code) setErrors(p => ({ ...p, class_code: '' })) }}
             placeholder="e.g. 10"
           />
+          {errors.class_code && <p className="text-xs text-red-500 mt-1">{errors.class_code}</p>}
         </FormField>
-
         <FormField label="Status">
           <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
             <option>Active</option>

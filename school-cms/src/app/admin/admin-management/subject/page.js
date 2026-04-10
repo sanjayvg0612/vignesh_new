@@ -23,6 +23,7 @@ export default function SubjectPage() {
     subject_name: '', description: '', class_id: '', status: 'Active',
   })
   const [classes, setClasses] = useState([])
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -45,6 +46,8 @@ export default function SubjectPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const closeModal = () => { setModal(false); setErrors({}) }
+
   const openModal = async (subject = null) => {
     setEditing(subject)
     setForm(subject ? {
@@ -53,6 +56,7 @@ export default function SubjectPage() {
       class_id:     String(subject.class_id),
       status:       toUiStatus(subject.status),
     } : { subject_name: '', description: '', class_id: '', status: 'Active' })
+    setErrors({})
     try {
       const res = await classApi.dropdown()
       setClasses(res.result || [])
@@ -60,8 +64,17 @@ export default function SubjectPage() {
     setModal(true)
   }
 
+  const validate = () => {
+    const e = {}
+    if (!editing && !form.class_id) e.class_id = 'Class is required'
+    if (!form.subject_name.trim()) e.subject_name = 'Subject name is required'
+    return e
+  }
+
   const handleSave = async () => {
-    if (!form.subject_name.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
     setSaving(true)
     try {
       if (editing) {
@@ -148,38 +161,40 @@ export default function SubjectPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={closeModal}
         title={editing ? 'Edit Subject' : 'Add Subject'}
         footer={
           <>
-            <button onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={closeModal} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
               {saving ? 'Saving...' : 'Save'}
             </button>
           </>
         }
       >
-                {!editing && (
+        {!editing && (
           <FormField label="Class" required>
             <select
-              className="input"
+              className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
               value={form.class_id}
-              onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}
+              onChange={e => { setForm(f => ({ ...f, class_id: e.target.value })); if (errors.class_id) setErrors(p => ({ ...p, class_id: '' })) }}
             >
               <option value="">— Select Class —</option>
               {classes.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
         )}
         <FormField label="Subject Name" required>
           <input
-            className="input"
+            className={`input ${errors.subject_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.subject_name}
-            onChange={e => setForm(f => ({ ...f, subject_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, subject_name: e.target.value })); if (errors.subject_name) setErrors(p => ({ ...p, subject_name: '' })) }}
             placeholder="e.g. Mathematics"
           />
+          {errors.subject_name && <p className="text-xs text-red-500 mt-1">{errors.subject_name}</p>}
         </FormField>
         <FormField label="Description">
           <input

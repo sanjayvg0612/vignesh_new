@@ -14,6 +14,7 @@ export default function AddTeacherPage() {
   const [saving, setSaving]   = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError]     = useState('')
+  const [errors, setErrors]   = useState({})
   const [roles, setRoles]     = useState([])
   const [form, setForm]       = useState({
     first_name: '', last_name: '', email: '', mobile: '',
@@ -26,10 +27,14 @@ export default function AddTeacherPage() {
     roleApi.list().then(r => setRoles(r.result?.data || r.result || [])).catch(() => setRoles([]))
   }, [])
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const ve = {}
+    if (!form.first_name.trim()) ve.first_name = 'First name is required'
+    if (!form.last_name.trim()) ve.last_name = 'Last name is required'
+    if (Object.keys(ve).length) { setErrors(ve); return }
     setSaving(true); setError('')
     try {
       const payload = {
@@ -70,10 +75,12 @@ export default function AddTeacherPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="First Name" required>
-              <input className="input" value={form.first_name} onChange={f('first_name')} required />
+              <input className={`input ${errors.first_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.first_name} onChange={f('first_name')} />
+              {errors.first_name && <p className="text-xs text-red-500 mt-1">{errors.first_name}</p>}
             </FormField>
             <FormField label="Last Name" required>
-              <input className="input" value={form.last_name} onChange={f('last_name')} required />
+              <input className={`input ${errors.last_name ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.last_name} onChange={f('last_name')} />
+              {errors.last_name && <p className="text-xs text-red-500 mt-1">{errors.last_name}</p>}
             </FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
