@@ -24,6 +24,7 @@ export default function EnquiryPage() {
     guardian_name: '', guardian_phone: '', guardian_occupation: '', guardian_gender: 'male',
   })
   const [classes, setClasses] = useState([])
+  const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -46,6 +47,15 @@ export default function EnquiryPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
+  const validate = () => {
+    const e = {}
+    if (!form.student_name.trim())   e.student_name   = 'Student name is required'
+    if (!form.guardian_phone.trim()) e.guardian_phone = 'Guardian phone is required'
+    else if (!/^\d{10}$/.test(form.guardian_phone.trim())) e.guardian_phone = 'Enter a valid 10-digit phone number'
+    if (form.age && (isNaN(form.age) || parseInt(form.age, 10) < 1)) e.age = 'Enter a valid age'
+    return e
+  }
+
   const openModal = async (item = null) => {
     setEditing(item)
     setForm(item ? {
@@ -61,6 +71,7 @@ export default function EnquiryPage() {
       student_name: '', gender: 'male', age: '', class_id: '',
       guardian_name: '', guardian_phone: '', guardian_occupation: '', guardian_gender: 'male',
     })
+    setErrors({})
     try {
       const res = await classApi.dropdown()
       setClasses(res.result || [])
@@ -69,7 +80,8 @@ export default function EnquiryPage() {
   }
 
   const handleSave = async () => {
-    if (!form.student_name.trim() || !form.guardian_phone.trim()) return
+    const e = validate()
+    if (Object.keys(e).length) { setErrors(e); return }
     setSaving(true)
     try {
       const payload = {
@@ -157,7 +169,7 @@ export default function EnquiryPage() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModal(false)}
+        onClose={() => { setModal(false); setErrors({}) }}
         title={editing ? 'Edit Enquiry' : 'Add Enquiry'}
         footer={
           <>
@@ -170,11 +182,12 @@ export default function EnquiryPage() {
       >
         <FormField label="Student Name" required>
           <input
-            className="input"
+            className={`input ${errors.student_name ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.student_name}
-            onChange={e => setForm(f => ({ ...f, student_name: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, student_name: e.target.value })); if (errors.student_name) setErrors(p => ({ ...p, student_name: '' })) }}
             placeholder="Full name"
           />
+          {errors.student_name && <p className="text-xs text-red-500 mt-1">{errors.student_name}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Gender">
@@ -184,19 +197,20 @@ export default function EnquiryPage() {
           </FormField>
           <FormField label="Age">
             <input
-              className="input"
+              className={`input ${errors.age ? 'border-red-400 focus:ring-red-400' : ''}`}
               type="number"
               min="1"
               value={form.age}
-              onChange={e => setForm(f => ({ ...f, age: e.target.value }))}
+              onChange={e => { setForm(f => ({ ...f, age: e.target.value })); if (errors.age) setErrors(p => ({ ...p, age: '' })) }}
               placeholder="e.g. 12"
             />
+            {errors.age && <p className="text-xs text-red-500 mt-1">{errors.age}</p>}
           </FormField>
         </div>
         <FormField label="Class">
           <select className="input" value={form.class_id} onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}>
             <option value="">— Select Class (optional) —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_code}>{c.class_code} {c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
           </select>
         </FormField>
         <FormField label="Guardian Name">
@@ -207,13 +221,14 @@ export default function EnquiryPage() {
             placeholder="Guardian's name"
           />
         </FormField>
-        <FormField label="Guardian Phone">
+        <FormField label="Guardian Phone" required>
           <input
-            className="input"
+            className={`input ${errors.guardian_phone ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.guardian_phone}
-            onChange={e => setForm(f => ({ ...f, guardian_phone: e.target.value }))}
+            onChange={e => { setForm(f => ({ ...f, guardian_phone: e.target.value })); if (errors.guardian_phone) setErrors(p => ({ ...p, guardian_phone: '' })) }}
             placeholder="e.g. 9876543210"
           />
+          {errors.guardian_phone && <p className="text-xs text-red-500 mt-1">{errors.guardian_phone}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Guardian Occupation">

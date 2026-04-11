@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { PageHeader, SearchBar, Table, Pagination, Modal, FormField, StatusBadge } from '@/components/ui'
-import { studentApi, getSchoolId } from '@/lib/api'
+import { studentApi, classApi, sectionApi, getSchoolId } from '@/lib/api'
 
 const PER_PAGE = 10
 
@@ -15,6 +15,11 @@ export default function StudentsPage() {
   const [total, setTotal]     = useState(0)
   const [page, setPage]       = useState(1)
   const [search, setSearch]   = useState('')
+  const [filterClass, setFilterClass]     = useState('')
+  const [filterSection, setFilterSection] = useState('')
+  const [classes, setClasses]             = useState([])
+  const [sections, setSections]           = useState([])
+  const [sectionLoading, setSectionLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [modalOpen, setModal] = useState(false)
@@ -32,7 +37,12 @@ export default function StudentsPage() {
     setLoading(true)
     setError('')
     try {
-      const res    = await studentApi.list({ page, limit: PER_PAGE, search: search || undefined })
+      const res    = await studentApi.list({
+        page, limit: PER_PAGE,
+        search:     search        || undefined,
+        class_id:   filterClass   || undefined,
+        section_id: filterSection || undefined,
+      })
       const result = res.result || {}
       setData(result.data  || [])
       setTotal(result.total || 0)
@@ -41,11 +51,28 @@ export default function StudentsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, filterClass, filterSection])
 
   useEffect(() => { fetchStudents() }, [fetchStudents])
 
+  useEffect(() => {
+    classApi.dropdown().then(r => setClasses(Array.isArray(r.result) ? r.result : [])).catch(() => setClasses([]))
+  }, [])
+
   const handleSearch = (v) => { setSearch(v); setPage(1) }
+
+  const handleClassFilter = async (classId) => {
+    setFilterClass(classId)
+    setFilterSection('')
+    setSections([])
+    setPage(1)
+    if (!classId) return
+    setSectionLoading(true)
+    try {
+      const res = await sectionApi.dropdown({ class_id: classId })
+      setSections(Array.isArray(res.result) ? res.result : [])
+    } catch { setSections([]) } finally { setSectionLoading(false) }
+  }
 
   const openEdit = (s) => {
     setEditing(s)
@@ -101,7 +128,32 @@ export default function StudentsPage() {
 
       <div className="card">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-          <SearchBar value={search} onChange={handleSearch} placeholder="Search by name, roll, phone, class..." />
+          <div className="flex items-center gap-3 flex-wrap flex-1">
+            <select
+              className="input w-40"
+              value={filterClass}
+              onChange={e => handleClassFilter(e.target.value)}
+            >
+              <option value="">All Classes</option>
+              {classes.map(c => (
+                <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>
+              ))}
+            </select>
+            <select
+              className="input w-40"
+              value={filterSection}
+              onChange={e => { setFilterSection(e.target.value); setPage(1) }}
+              disabled={sectionLoading || !filterClass || sections.length === 0}
+            >
+              <option value="">
+                {sectionLoading ? 'Loading...' : !filterClass ? 'All Sections' : sections.length === 0 ? 'No Sections' : 'All Sections'}
+              </option>
+              {sections.map(s => (
+                <option key={s.section_id} value={s.section_id}>{s.section_code}</option>
+              ))}
+            </select>
+            <SearchBar value={search} onChange={handleSearch} placeholder="Search by name, roll, phone, class..." />
+          </div>
           <span className="text-sm text-gray-500">{total} records</span>
         </div>
 

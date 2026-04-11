@@ -181,7 +181,7 @@ export default function SubjectPage() {
             >
               <option value="">— Select Class —</option>
               {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.class_id} value={c.class_code}>{c.class_code} {c.stream_name ? ` - ${c.stream_name}` : ''}</option>
               ))}
             </select>
             {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}

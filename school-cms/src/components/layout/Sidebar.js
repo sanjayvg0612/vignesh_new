@@ -30,7 +30,7 @@ const NAV = [
     { label: 'All Students',    href: '/admin/students',             icon: Users },
     { label: 'Bulk Upload',     href: '/admin/students/bulk-upload', icon: Upload },
     { label: 'Guardian List',   href: '/admin/students/guardian',    icon: HeartHandshake },
-    { label: 'Transfer',        href: '/admin/students/transfer',    icon: ArrowRightLeft },
+    { label: 'Transfer Student',        href: '/admin/students/transfer',    icon: ArrowRightLeft },
     { label: 'Promote',         href: '/admin/students/promote',     icon: TrendingUp },
   ]},
   { label: 'Staff Management', icon: Briefcase, children: [
@@ -69,11 +69,11 @@ const NAV = [
     { label: 'Slider',  href: '/admin/image-library/slider',  icon: LayoutGrid },
     { label: 'Gallery', href: '/admin/image-library/gallery', icon: Image },
   ]},
-  { label: 'Communication', icon: MessageSquare, children: [
-    { label: 'Notice',       href: '/admin/communication/notice',       icon: FileText },
-    { label: 'Event',        href: '/admin/communication/event',        icon: Calendar },
-    { label: 'Notification', href: '/admin/communication/notification', icon: Bell },
-    { label: 'Announcement', href: '/admin/communication/announcement', icon: Megaphone },
+  { label: 'Announcement', icon: Megaphone, children: [
+    { label: 'Announcements', href: '/admin/announcement', icon: Megaphone },
+  ]},
+  { label: 'Notification', icon: Bell, children: [
+    { label: 'Notifications', href: '/admin/notification', icon: Bell },
   ]},
   { label: 'Transport', icon: Bus, children: [
     { label: 'Vehicle',           href: '/admin/transport/vehicle',  icon: Truck },
@@ -81,6 +81,12 @@ const NAV = [
     { label: 'Vehicle Route Map', href: '/admin/transport/map',      icon: Map },
     { label: 'Transport Student', href: '/admin/transport/students', icon: Users },
     { label: 'Vehicle Expense',   href: '/admin/transport/expense',  icon: Wallet },
+  ]},
+  { label: 'Holiday', icon: Calendar, children: [
+    { label: 'Holidays', href: '/admin/holiday', icon: Calendar },
+  ]},
+  { label: 'Student Diary', icon: BookOpen, children: [
+    { label: 'Diary', href: '/admin/student-diary', icon: BookMarked },
   ]},
   { label: 'System', icon: Settings, children: [
     { label: 'Contact Info', href: '/admin/system/contact', icon: Contact },

@@ -22,9 +22,10 @@ export default function ClassPage() {
   const [form, setForm]       = useState({
     class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active',
   })
-  const [groups, setGroups]   = useState([])
-  const [streams, setStreams] = useState([])
-  const [errors, setErrors]   = useState({})
+  const [groups, setGroups]         = useState([])
+  const [streams, setStreams]       = useState([])
+  const [streamLoading, setStreamLoading] = useState(false)
+  const [errors, setErrors]         = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -54,25 +55,29 @@ export default function ClassPage() {
     setForm(cls ? {
       class_name:       cls.class_name       || '',
       class_code:       cls.class_code,
-      school_group_id:  String(cls.school_group_id),
+      school_group_id:  String(cls.id),
       school_stream_id: cls.school_stream_id ? String(cls.school_stream_id) : '',
       status:           toUiStatus(cls.status),
     } : { class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active' })
     setErrors({})
+    setStreams([])
     try {
-      const [groupRes, streamRes] = await Promise.all([
-        groupApi.dropdown(),
-        streamApi.dropdown(),
-      ])
-      setGroups(groupRes.result  || [])
-      setStreams(streamRes.result || [])
-    } catch { setGroups([]); setStreams([]) }
+      const groupRes = await groupApi.dropdown()
+      setGroups(groupRes.result || [])
+    } catch { setGroups([]) }
     setModal(true)
   }
 
-  const handleGroupChange = (groupId) => {
+  const handleGroupChange = async (groupId) => {
     setForm(f => ({ ...f, school_group_id: groupId, school_stream_id: '' }))
     if (errors.school_group_id) setErrors(p => ({ ...p, school_group_id: '' }))
+    if (!groupId) { setStreams([]); return }
+    setStreamLoading(true)
+    try {
+      const streamRes = await streamApi.dropdown({ school_group_id: groupId })
+      const result = streamRes.result
+      setStreams(Array.isArray(result) ? result : [])
+    } catch { setStreams([]) } finally { setStreamLoading(false) }
   }
 
   const validate = () => {
@@ -203,10 +208,13 @@ export default function ClassPage() {
             className="input"
             value={form.school_stream_id}
             onChange={e => setForm(f => ({ ...f, school_stream_id: e.target.value }))}
+            disabled={streamLoading || !form.school_group_id || streams.length === 0}
           >
-            <option value="">— Select Stream (optional) —</option>
-            {streams.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+            <option value="">
+              {streamLoading ? 'Loading...' : streams.length === 0 ? 'No streams available' : '— Select Stream (optional) —'}
+            </option>
+            {streams.length != 0  && streams?.map(s => (
+              <option key={s.school_stream_id} value={s.school_stream_id}>{s.stream_name}</option>
             ))}
           </select>
         </FormField>

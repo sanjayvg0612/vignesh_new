@@ -47,7 +47,12 @@ export const streamApi = {
   create:  (body)        => request('POST', '/api/school_stream/create_stream', body),
   update:  (id, body)    => request('PUT', `/api/school_stream/update_stream/${id}`, body),
   delete:  (id)          => request('DELETE', `/api/school_stream/delete_stream/${id}`),
-  dropdown:(params = {}) => request('GET', `/api/school_stream/streams/all?${qs(params)}`),
+  dropdown:(params = {}) => {
+    const q = new URLSearchParams()
+    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    if (params.search)          q.set('search',          params.search)
+    return request('GET', `/api/school_stream/streams/all?${q}`)
+  },
 }
 
 // ── SCHOOL CLASS ──────────────────────────────────────────────────────────────
@@ -58,7 +63,12 @@ export const classApi = {
   create:  (body)        => request('POST', '/api/school_stream_class/create_class', body),
   update:  (id, body)    => request('PUT', `/api/school_stream_class/update_class/${id}`, body),
   delete:  (id)          => request('DELETE', `/api/school_stream_class/delete_class/${id}`),
-  dropdown:(params = {}) => request('GET', `/api/school_stream_class/classes/all?${qs(params)}`),
+  dropdown:(params = {}) => {
+    const q = new URLSearchParams()
+    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    if (params.search)          q.set('search',          params.search)
+    return request('GET', `/api/school_stream_class/classes/all?${q}`)
+  },
 }
 
 // ── SCHOOL SUBJECT ────────────────────────────────────────────────────────────
@@ -458,6 +468,112 @@ export const inquiryApi = {
   create:  (body)        => request('POST', '/api/student/inquiry/create', body),
   update:  (id, body)    => request('PUT', `/api/student/inquiry/update/${id}`, body),
   delete:  (id)          => request('DELETE', `/api/student/inquiry/delete/${id}`),
+}
+
+// ── ANNOUNCEMENT ─────────────────────────────────────────────────────────────
+
+export const announcementApi = {
+  list:    (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)   q.set('page',   params.page)
+    if (params.limit)  q.set('limit',  params.limit)
+    if (params.search) q.set('search', params.search)
+    return request('GET', `/api/announcement/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/announcement/get/${id}`),
+  create:  (payload, file) => {
+    if (file) {
+      const form = new FormData()
+      form.append('payload', JSON.stringify(payload))
+      form.append('file', file)
+      return fetch(`${BASE_URL}/api/announcement/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
+    }
+    return request('POST', '/api/announcement/create', payload)
+  },
+  update:  (id, payload, file) => {
+    if (file) {
+      const form = new FormData()
+      form.append('payload', JSON.stringify(payload))
+      form.append('file', file)
+      return fetch(`${BASE_URL}/api/announcement/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
+    }
+    return request('PUT', `/api/announcement/update/${id}`, payload)
+  },
+  delete:  (id)          => request('DELETE', `/api/announcement/delete/${id}`),
+  fileUrl: (id)          => `${BASE_URL}/api/announcement/file/${id}`,
+}
+
+// ── NOTIFICATION ──────────────────────────────────────────────────────────────
+
+export const notificationApi = {
+  list:    (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)   q.set('page',   params.page)
+    if (params.limit)  q.set('limit',  params.limit)
+    if (params.search) q.set('search', params.search)
+    return request('GET', `/api/notification/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/notification/get/${id}`),
+  create:  (payload, image) => {
+    if (image) {
+      const form = new FormData()
+      form.append('payload', JSON.stringify(payload))
+      form.append('image', image)
+      return fetch(`${BASE_URL}/api/notification/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
+    }
+    return request('POST', '/api/notification/create', payload)
+  },
+  update:  (id, payload, image) => {
+    if (image) {
+      const form = new FormData()
+      form.append('payload', JSON.stringify(payload))
+      form.append('image', image)
+      return fetch(`${BASE_URL}/api/notification/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
+    }
+    return request('PUT', `/api/notification/update/${id}`, payload)
+  },
+  delete:  (id)          => request('DELETE', `/api/notification/delete/${id}`),
+  imageUrl:(id)          => `${BASE_URL}/api/notification/image/${id}`,
+}
+
+// ── HOLIDAY ───────────────────────────────────────────────────────────────────
+
+export const holidayApi = {
+  list:    (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)   q.set('page',   params.page)
+    if (params.limit)  q.set('limit',  params.limit)
+    if (params.search) q.set('search', params.search)
+    if (params.year)   q.set('year',   params.year)
+    if (params.month)  q.set('month',  params.month)
+    return request('GET', `/api/holiday/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/holiday/get/${id}`),
+  create:  (body)        => request('POST', '/api/holiday/create', body),
+  update:  (id, body)    => request('PUT', `/api/holiday/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/holiday/delete/${id}`),
+}
+
+// ── STUDENT DIARY ─────────────────────────────────────────────────────────────
+
+export const diaryApi = {
+  list:    (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)       q.set('page',       params.page)
+    if (params.limit)      q.set('limit',      params.limit)
+    if (params.search)     q.set('search',     params.search)
+    if (params.student_id) q.set('student_id', params.student_id)
+    if (params.class_id)   q.set('class_id',   params.class_id)
+    if (params.section_id) q.set('section_id', params.section_id)
+    if (params.subject_id) q.set('subject_id', params.subject_id)
+    if (params.dairy_date) q.set('dairy_date', params.dairy_date)
+    if (params.status)     q.set('status',     params.status)
+    return request('GET', `/api/student_diary/list?${q}`)
+  },
+  getById: (id)          => request('GET', `/api/student_diary/get/${id}`),
+  create:  (body)        => request('POST', '/api/student_diary/create', body),
+  update:  (id, body)    => request('PUT', `/api/student_diary/update/${id}`, body),
+  delete:  (id)          => request('DELETE', `/api/student_diary/delete/${id}`),
 }
 
 // ── STUDENT ───────────────────────────────────────────────────────────────────

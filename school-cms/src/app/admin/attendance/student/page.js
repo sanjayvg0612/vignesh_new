@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, Table } from '@/components/ui'
 import { studentAttendanceApi, studentApi, classApi, sectionApi, groupApi } from '@/lib/api'
 
@@ -23,43 +23,94 @@ export default function StudentAttendancePage() {
   const [sectionId, setSectionId] = useState('')
   const [date, setDate]           = useState(new Date().toISOString().split('T')[0])
 
+  const [search, setSearch]             = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
 
-  // Load groups + classes on mount
+  const [classLoading, setClassLoading]     = useState(false)
+  const [sectionLoading, setSectionLoading] = useState(false)
+
+  // Load groups on mount
   useEffect(() => {
-    groupApi.dropdown().then(r => setGroups(r.result || [])).catch(() => setGroups([]))
-    classApi.dropdown().then(r => setClasses(r.result || [])).catch(() => setClasses([]))
+    groupApi.dropdown().then(r => setGroups(Array.isArray(r.result) ? r.result : [])).catch(() => setGroups([]))
   }, [])
 
-  // Load sections when class changes
-  useEffect(() => {
+  const handleGroupChange = async (id) => {
+    setGroupId(id)
+    setClassId('')
+    setSectionId('')
+    setClasses([])
+    setSections([])
+    setStudents([])
+    setStatuses({})
+    setSearch('')
+    setDebouncedSearch('')
+    if (!id) return
+    setClassLoading(true)
+    try {
+      const res = await classApi.dropdown({ school_group_id: id })
+      setClasses(Array.isArray(res.result) ? res.result : [])
+    } catch { setClasses([]) } finally { setClassLoading(false) }
+  }
+
+  const handleClassChange = async (id) => {
+    setClassId(id)
     setSectionId('')
     setSections([])
-    if (!classId) return
-    sectionApi.dropdown({ class_id: classId })
-      .then(r => setSections(r.result || []))
-      .catch(() => setSections([]))
-  }, [classId])
-
-  // Load students when class + section selected
-  const loadStudents = useCallback(async () => {
-    if (!classId || !sectionId) { setStudents([]); setStatuses({}); return }
-    setLoading(true); setError('')
+    setStudents([])
+    setStatuses({})
+    setSearch('')
+    setDebouncedSearch('')
+    if (!id) return
+    setSectionLoading(true)
     try {
-      const res  = await studentApi.list({ school_id: SCHOOL_ID, class_id: classId, section_id: sectionId, limit: 200 })
-      const list = res.result?.data || []
-      setStudents(list)
-      const init = {}
-      list.forEach(s => { init[s.student_id] = 'P' })
-      setStatuses(init)
-    } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
+      const res = await sectionApi.dropdown({ class_id: id })
+      setSections(Array.isArray(res.result) ? res.result : [])
+    } catch { setSections([]) } finally { setSectionLoading(false) }
+  }
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Load students when class + section selected (no search)
+  useEffect(() => {
+    if (!classId || !sectionId) { setStudents([]); setStatuses({}); return }
+    setLoading(true)
+    setError('')
+    studentApi.list({ school_id: SCHOOL_ID, class_id: classId, section_id: sectionId, limit: 100 })
+      .then(res => {
+        const list = res.result?.data || []
+        setStudents(list)
+        const init = {}
+        list.forEach(s => { init[s.student_id] = 'P' })
+        setStatuses(init)
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
   }, [classId, sectionId])
 
-  useEffect(() => { loadStudents() }, [loadStudents])
+  // Search students by name/ID via API
+  useEffect(() => {
+    if (!debouncedSearch.trim()) return
+    setLoading(true)
+    setError('')
+    studentApi.list({ school_id: SCHOOL_ID, limit: 100, search: debouncedSearch })
+      .then(res => {
+        const list = res.result?.data || []
+        setStudents(list)
+        const init = {}
+        list.forEach(s => { init[s.student_id] = 'P' })
+        setStatuses(init)
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [debouncedSearch])
 
   const toggle = (id) => {
     setSaved(false)
@@ -118,28 +169,41 @@ export default function StudentAttendancePage() {
       <div className="card p-4 mb-4 flex gap-4 flex-wrap items-end">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Group <span className="text-red-500">*</span></label>
-          <select className="input w-36" value={groupId} onChange={e => setGroupId(e.target.value)}>
+          <select className="input w-36" value={groupId} onChange={e => handleGroupChange(e.target.value)}>
             <option value="">— Select —</option>
             {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Class <span className="text-red-500">*</span></label>
-          <select className="input w-36" value={classId} onChange={e => { setClassId(e.target.value); setStudents([]); setStatuses({}) }}>
-            <option value="">— Select —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <select className="input w-36" value={classId} onChange={e => handleClassChange(e.target.value)} disabled={classLoading || !groupId || classes.length === 0}>
+            <option value="">
+              {classLoading ? 'Loading...' : !groupId ? '— Select —' : classes.length === 0 ? 'No classes' : '— Select —'}
+            </option>
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Section <span className="text-red-500">*</span></label>
-          <select className="input w-36" value={sectionId} onChange={e => setSectionId(e.target.value)} disabled={!classId}>
-            <option value="">— Select —</option>
-            {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <select className="input w-36" value={sectionId} onChange={e => setSectionId(e.target.value)} disabled={sectionLoading || !classId || sections.length === 0}>
+            <option value="">
+              {sectionLoading ? 'Loading...' : !classId ? '— Select —' : sections.length === 0 ? 'No sections' : '— Select —'}
+            </option>
+            {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_code}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
           <input type="date" className="input w-40" value={date} onChange={e => setDate(e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Search Student</label>
+          <input
+            className="input w-48"
+            placeholder="Name or Roll No..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
@@ -167,7 +231,7 @@ export default function StudentAttendancePage() {
         </div>
       )}
 
-      {!classId || !sectionId ? (
+      {!classId && !sectionId && !debouncedSearch ? (
         <div className="card p-8 text-center text-gray-400 text-sm">Select Group, Class and Section to load students</div>
       ) : (
         <div className="card">

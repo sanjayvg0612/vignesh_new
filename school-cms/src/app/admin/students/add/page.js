@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageHeader, FormField } from '@/components/ui'
-import { studentApi, getSchoolId } from '@/lib/api'
+import { studentApi, classApi, sectionApi, getSchoolId } from '@/lib/api'
 
 const EMPTY = {
   first_name: '', last_name: '', gender: 'male', dob: '', age: '',
@@ -16,13 +16,32 @@ const EMPTY = {
 
 export default function AddStudentPage() {
   const router  = useRouter()
-  const [form, setForm]     = useState(EMPTY)
-  const [saving, setSaving] = useState(false)
-  const [error, setError]   = useState('')
+  const [form, setForm]       = useState(EMPTY)
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState(false)
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors]   = useState({})
+  const [classes, setClasses]           = useState([])
+  const [sections, setSections]         = useState([])
+  const [sectionLoading, setSectionLoading] = useState(false)
+
+  useEffect(() => {
+    classApi.dropdown().then(r => setClasses(Array.isArray(r.result) ? r.result : [])).catch(() => setClasses([]))
+  }, [])
 
   const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
+
+  const handleClassChange = async (classId) => {
+    setForm(p => ({ ...p, class_id: classId, section_id: '' }))
+    if (errors.class_id) setErrors(p => ({ ...p, class_id: '' }))
+    setSections([])
+    if (!classId) return
+    setSectionLoading(true)
+    try {
+      const res = await sectionApi.dropdown({ class_id: classId })
+      setSections(Array.isArray(res.result) ? res.result : [])
+    } catch { setSections([]) } finally { setSectionLoading(false) }
+  }
 
   const validate = () => {
     const e = {}
@@ -135,12 +154,29 @@ export default function AddStudentPage() {
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Class & Enrollment</h3>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Class ID" required>
-              <input className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.class_id} onChange={f('class_id')} placeholder="Enter Class ID" />
+            <FormField label="Class" required>
+              <select className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.class_id} onChange={e => handleClassChange(e.target.value)}>
+                <option value="">— Select Class —</option>
+                {classes.map(c => (
+                  <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>
+                ))}
+              </select>
               {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
             </FormField>
-            <FormField label="Section ID" required>
-              <input className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`} type="number" value={form.section_id} onChange={f('section_id')} placeholder="Enter Section ID" />
+            <FormField label="Section" required>
+              <select
+                className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+                value={form.section_id}
+                onChange={e => { setForm(p => ({ ...p, section_id: e.target.value })); if (errors.section_id) setErrors(p => ({ ...p, section_id: '' })) }}
+                disabled={sectionLoading || !form.class_id || sections.length === 0}
+              >
+                <option value="">
+                  {sectionLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : sections.length === 0 ? 'No sections available' : '— Select Section —'}
+                </option>
+                {sections.map(s => (
+                  <option key={s.section_id} value={s.section_id}>{s.section_code}</option>
+                ))}
+              </select>
               {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
             </FormField>
             <FormField label="Enroll Date">

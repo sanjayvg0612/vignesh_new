@@ -1,46 +1,82 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { ArrowRightLeft, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ArrowRightLeft, CheckCircle, Search, X } from 'lucide-react'
 import { PageHeader, FormField } from '@/components/ui'
-import { studentApi, classApi, sectionApi } from '@/lib/api'
+import { studentApi, sectionApi } from '@/lib/api'
 
 export default function TransferPage() {
-  const [studentId, setStudentId]   = useState('')
-  const [sectionId, setSectionId]   = useState('')
-  const [classId, setClassId]       = useState('')
+  const [studentId, setStudentId]             = useState('')
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [searchQuery, setSearchQuery]         = useState('')
+  const [searchResults, setSearchResults]     = useState([])
+  const [searching, setSearching]             = useState(false)
+  const [showResults, setShowResults]         = useState(false)
+
+  const [sectionId, setSectionId]             = useState('')
+  const [sections, setSections]               = useState([])
+  const [sectionLoading, setSectionLoading]   = useState(false)
+
   const [transferring, setTransferring] = useState(false)
-  const [success, setSuccess]       = useState('')
-  const [error, setError]           = useState('')
-  const [errors, setErrors]         = useState({})
-  const [students, setStudents]     = useState([])
-  const [classes, setClasses]       = useState([])
-  const [sections, setSections]     = useState([])
+  const [success, setSuccess]           = useState('')
+  const [error, setError]               = useState('')
+  const [errors, setErrors]             = useState({})
 
-  // Load students and classes on mount
-  useEffect(() => {
-    studentApi.dropdown({ limit: 500 })
-      .then(r => setStudents(r.result?.data || r.result || []))
-      .catch(() => setStudents([]))
-    classApi.dropdown()
-      .then(r => setClasses(r.result || []))
-      .catch(() => setClasses([]))
-  }, [])
+  const searchRef   = useRef(null)
+  const debounceRef = useRef(null)
 
-  // Load sections when class changes
-  useEffect(() => {
-    if (!classId) { setSections([]); setSectionId(''); return }
-    sectionApi.list({ page: 1, limit: 100 }).then(r => {
-      const all = r.result?.data || []
-      setSections(all.filter(s => String(s.class_id) === String(classId)))
-    }).catch(() => setSections([]))
+  const handleSearchChange = (val) => {
+    setSearchQuery(val)
+    setShowResults(true)
+    if (!val.trim()) { setSearchResults([]); return }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await studentApi.list({ search: val.trim(), limit: 10 })
+        setSearchResults(res.result?.data || [])
+      } catch { setSearchResults([]) } finally { setSearching(false) }
+    }, 400)
+  }
+
+  const selectStudent = async (s) => {
+    setSelectedStudent(s)
+    setStudentId(s.student_id)
+    setSearchQuery('')
+    setSearchResults([])
+    setShowResults(false)
     setSectionId('')
-  }, [classId])
+    setSections([])
+    if (errors.studentId) setErrors(p => ({ ...p, studentId: '' }))
+    if (s.class_id) {
+      setSectionLoading(true)
+      try {
+        const res = await sectionApi.dropdown({ class_id: s.class_id })
+        setSections(Array.isArray(res.result) ? res.result : [])
+      } catch { setSections([]) } finally { setSectionLoading(false) }
+    }
+  }
+
+  const clearStudent = () => {
+    setSelectedStudent(null)
+    setStudentId('')
+    setSearchQuery('')
+    setSearchResults([])
+    setSections([])
+    setSectionId('')
+  }
+
+  useEffect(() => {
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const handleTransfer = async (e) => {
     e.preventDefault()
     const ve = {}
     if (!studentId) ve.studentId = 'Please select a student'
     if (!sectionId) ve.sectionId = 'Please select a section'
+    else if (sectionId === String(selectedStudent?.section_id)) ve.sectionId = 'Please select a different section'
     if (Object.keys(ve).length) { setErrors(ve); return }
     setErrors({})
     setTransferring(true)
@@ -49,9 +85,7 @@ export default function TransferPage() {
     try {
       const res = await studentApi.transfer(studentId, sectionId)
       setSuccess(res.message || 'Student transferred successfully.')
-      setStudentId('')
-      setClassId('')
-      setSectionId('')
+      clearStudent()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -77,53 +111,101 @@ export default function TransferPage() {
         )}
 
         <form onSubmit={handleTransfer} className="space-y-4">
+
+          {/* Student Search */}
           <FormField label="Select Student" required>
-            <select
-              className={`input ${errors.studentId ? 'border-red-400 focus:ring-red-400' : ''}`}
-              value={studentId}
-              onChange={e => { setStudentId(e.target.value); if(errors.studentId) setErrors(p=>({...p,studentId:''})) }}
-            >
-              <option value="">— Choose a student —</option>
-              {students.map(s => (
-                <option key={s.student_id || s.id} value={s.student_id || s.id}>
-                  {s.student_name || [s.first_name, s.last_name].filter(Boolean).join(' ')}
-                  {s.roll_number ? ` (${s.roll_number})` : ''}
-                </option>
-              ))}
-            </select>
+            {selectedStudent ? (
+              <div className="flex items-center justify-between rounded-lg border px-3 py-2 bg-primary-50 border-primary-200">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {[selectedStudent.first_name, selectedStudent.last_name].filter(Boolean).join(' ')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {selectedStudent.student_roll_id ? `Roll: ${selectedStudent.student_roll_id}` : ''}
+                    {selectedStudent.class_code ? `  •  Class: ${selectedStudent.class_code}` : ''}
+                  </p>
+                </div>
+                <button type="button" onClick={clearStudent} className="text-gray-400 hover:text-red-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative" ref={searchRef}>
+                <div className={`flex items-center gap-2 input ${errors.studentId ? 'border-red-400 focus-within:ring-red-400' : ''}`}>
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    className="flex-1 outline-none bg-transparent text-sm"
+                    placeholder="Search by name or student ID..."
+                    value={searchQuery}
+                    onChange={e => handleSearchChange(e.target.value)}
+                    onFocus={() => searchQuery && setShowResults(true)}
+                  />
+                  {searching && <span className="text-xs text-gray-400">Searching...</span>}
+                </div>
+                {showResults && (searchResults.length > 0 || (!searching && searchQuery)) && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                    {searchResults.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-gray-400">No students found</p>
+                    ) : searchResults.map(s => (
+                      <button
+                        key={s.student_id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        onClick={() => selectStudent(s)}
+                      >
+                        <p className="text-sm font-medium text-gray-900">
+                          {[s.first_name, s.last_name].filter(Boolean).join(' ')}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {s.student_roll_id ? `Roll: ${s.student_roll_id}` : ''}
+                          {s.class_code ? `  •  Class: ${s.class_code}` : ''}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId}</p>}
           </FormField>
 
-          <FormField label="Transfer to Class" required>
-            <select
-              className="input"
-              value={classId}
-              onChange={e => setClassId(e.target.value)}
-            >
-              <option value="">— Choose target class —</option>
-              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </FormField>
+          {/* Current Section & Transfer to Section — same row */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Current Section">
+              <input
+                className="input bg-gray-50 text-gray-500 cursor-not-allowed"
+                value={ selectedStudent?.section_code || '—'}
+                readOnly
+              />
+            </FormField>
 
-          <FormField label="Transfer to Section" required>
-            <select
-              className={`input ${errors.sectionId ? 'border-red-400 focus:ring-red-400' : ''}`}
-              value={sectionId}
-              onChange={e => { setSectionId(e.target.value); if(errors.sectionId) setErrors(p=>({...p,sectionId:''})) }}
-              disabled={!classId}
-            >
-              <option value="">— Choose target section —</option>
-              {sections.map(s => (
-                <option key={s.section_id} value={s.section_id}>{s.section_name}</option>
-              ))}
-            </select>
-            {errors.sectionId && <p className="text-xs text-red-500 mt-1">{errors.sectionId}</p>}
-          </FormField>
+            <FormField label="Transfer to Section" required>
+              <select
+                className={`input ${errors.sectionId ? 'border-red-400 focus:ring-red-400' : ''}`}
+                value={sectionId}
+                onChange={e => {
+                  const val = e.target.value
+                  setSectionId(val)
+                  if (val && val === String(selectedStudent?.section_id)) setErrors(p => ({ ...p, sectionId: 'Please select a different section' }))
+                  else if (errors.sectionId) setErrors(p => ({ ...p, sectionId: '' }))
+                }}
+                disabled={sectionLoading || !selectedStudent || sections.length === 0}
+              >
+                <option value="">
+                  {sectionLoading ? 'Loading...' : !selectedStudent ? '— Select student first —' : sections.length === 0 ? 'No sections available' : '— Select section —'}
+                </option>
+                {sections.map(s => (
+                  <option key={s.section_id} value={s.section_id}>{s.section_code}</option>
+                ))}
+              </select>
+              {errors.sectionId && <p className="text-xs text-red-500 mt-1">{errors.sectionId}</p>}
+            </FormField>
+          </div>
 
           <button
             type="submit"
             className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={transferring}
+            disabled={transferring || (!!sectionId && sectionId === String(selectedStudent?.section_id))}
           >
             <ArrowRightLeft className="w-4 h-4" />
             {transferring ? 'Transferring...' : 'Transfer Student'}

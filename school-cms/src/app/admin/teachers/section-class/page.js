@@ -41,7 +41,7 @@ export default function SectionClassTeacherPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Class</label>
           <select className="input w-48" value={classId} onChange={e => setClassId(e.target.value)}>
             <option value="">— All Classes —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c =><option key={c.class_id} value={c.class_id}>{c.class_code} {c.stream_name && ` - ${c.stream_name}`}</option>)}
           </select>
         </div>
       </div>
