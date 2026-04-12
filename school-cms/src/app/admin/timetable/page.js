@@ -275,7 +275,7 @@ export default function TimetablePage() {
           <FormField label="Section" required>
             <select className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.section_id} onChange={f('section_id')} disabled={!form.class_id}>
               <option value="">— Select Section —</option>
-              {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {sections.map(s => <option key={s.school_stream_id} value={s.id}>{s.name}</option>)}
             </select>
             {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
           </FormField>

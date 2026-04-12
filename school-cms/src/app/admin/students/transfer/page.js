@@ -39,20 +39,32 @@ export default function TransferPage() {
   }
 
   const selectStudent = async (s) => {
-    setSelectedStudent(s)
-    setStudentId(s.student_id)
     setSearchQuery('')
     setSearchResults([])
     setShowResults(false)
     setSectionId('')
     setSections([])
     if (errors.studentId) setErrors(p => ({ ...p, studentId: '' }))
-    if (s.class_id) {
-      setSectionLoading(true)
-      try {
-        const res = await sectionApi.dropdown({ class_id: s.class_id })
-        setSections(Array.isArray(res.result) ? res.result : [])
-      } catch { setSections([]) } finally { setSectionLoading(false) }
+
+    // Fetch full student record to get class_id, section_id, section_code etc.
+    setSectionLoading(true)
+    try {
+      const res = await studentApi.getById(s.student_id)
+      const full = res.result || s
+      setSelectedStudent(full)
+      setStudentId(full.student_id)
+      const cid = full.class_id
+      if (cid) {
+        const secRes = await sectionApi.dropdown({ class_id: cid })
+        setSections(Array.isArray(secRes.result) ? secRes.result : [])
+      }
+    } catch {
+      // Fall back to partial data from search result
+      setSelectedStudent(s)
+      setStudentId(s.student_id)
+      setSections([])
+    } finally {
+      setSectionLoading(false)
     }
   }
 

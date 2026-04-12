@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader, Table, Pagination, Modal, FormField, SearchBar } from '@/components/ui'
-import { examApi, streamApi } from '@/lib/api'
+import { examApi, classApi } from '@/lib/api'
 
 const PER_PAGE = 10
 
@@ -13,19 +13,19 @@ export default function OfflineExamPage() {
   const [search, setSearch]   = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
-  const [streams, setStreams] = useState([])
+  const [classes, setClasses] = useState([])
   const [modalOpen, setModal] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState({
-    exam_name: '', school_stream_id: '', session_yr: '', exam_description: '', is_active: true,
+    exam_name: '', class_id: '', session_yr: '', exam_description: '', is_active: true,
   })
   const [errors, setErrors]   = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   useEffect(() => {
-    streamApi.dropdown().then(r => setStreams(r.result || [])).catch(() => setStreams([]))
+    classApi.dropdown().then(r => setClasses(Array.isArray(r.result) ? r.result : [])).catch(() => setClasses([]))
   }, [])
 
   const fetchExams = useCallback(async () => {
@@ -49,11 +49,11 @@ export default function OfflineExamPage() {
     setEditing(item)
     setForm(item ? {
       exam_name:        item.exam_name        || '',
-      school_stream_id: item.school_stream_id != null ? String(item.school_stream_id) : '',
+      class_id:         item.class_id != null ? String(item.class_id) : '',
       session_yr:       item.session_yr       || '',
       exam_description: item.exam_description || '',
       is_active:        item.is_active !== false,
-    } : { exam_name: '', school_stream_id: '', session_yr: '', exam_description: '', is_active: true })
+    } : { exam_name: '', class_id: '', session_yr: '', exam_description: '', is_active: true })
     setErrors({})
     setModal(true)
   }
@@ -61,7 +61,7 @@ export default function OfflineExamPage() {
   const validate = () => {
     const e = {}
     if (!form.exam_name.trim()) e.exam_name = 'Exam name is required'
-    if (!form.school_stream_id) e.school_stream_id = 'Stream is required'
+    if (!form.class_id)         e.class_id  = 'Class is required'
     if (!form.session_yr.trim()) e.session_yr = 'Session year is required'
     if (!form.exam_description.trim()) e.exam_description = 'Description is required'
     return e
@@ -75,7 +75,7 @@ export default function OfflineExamPage() {
     try {
       const payload = {
         exam_name:        form.exam_name.trim(),
-        school_stream_id: parseInt(form.school_stream_id, 10),
+        class_id:         parseInt(form.class_id, 10),
         session_yr:       form.session_yr.trim(),
         exam_description: form.exam_description.trim(),
         is_active:        form.is_active,
@@ -98,7 +98,7 @@ export default function OfflineExamPage() {
   }
 
   const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
-  const streamName = (id) => streams.find(s => s.id === id || s.school_stream_id === id)?.name || (id ? `#${id}` : '—')
+  const className = (id) => classes.find(c => String(c.class_id) === String(id))?.class_code || (id ? `#${id}` : '—')
 
   return (
     <div>
@@ -115,14 +115,14 @@ export default function OfflineExamPage() {
           <SearchBar value={search} onChange={handleSearch} placeholder="Search exams..." />
           <span className="text-sm text-gray-500">{total} records</span>
         </div>
-        <Table headers={['Sl No.', 'Exam Name', 'Stream', 'Session Year', 'Active', 'Actions']} empty={!loading && data.length === 0}>
+        <Table headers={['Sl No.', 'Exam Name', 'Class', 'Session Year', 'Active', 'Actions']} empty={!loading && data.length === 0}>
           {loading ? (
             <tr><td colSpan={6} className="table-td text-center text-gray-400 py-8">Loading...</td></tr>
           ) : data.map((ex, i) => (
             <tr key={ex.exam_id ?? i} className="hover:bg-gray-50 transition-colors">
               <td className="table-td text-gray-400">{(page - 1) * PER_PAGE + i + 1}</td>
               <td className="table-td font-medium text-gray-900">{ex.exam_name}</td>
-              <td className="table-td">{ex.stream_name || streamName(ex.school_stream_id)}</td>
+              <td className="table-td">{ex.class_code || className(ex.class_id)}</td>
               <td className="table-td">{ex.session_yr || '—'}</td>
               <td className="table-td">
                 {ex.is_active !== false
@@ -166,16 +166,16 @@ export default function OfflineExamPage() {
           {errors.exam_name && <p className="text-xs text-red-500 mt-1">{errors.exam_name}</p>}
         </FormField>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Stream" required>
+          <FormField label="Class" required>
             <select
-              className={`input ${errors.school_stream_id ? 'border-red-400 focus:ring-red-400' : ''}`}
-              value={form.school_stream_id}
-              onChange={e => { setForm(p => ({ ...p, school_stream_id: e.target.value })); if (errors.school_stream_id) setErrors(p => ({ ...p, school_stream_id: '' })) }}
+              className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+              value={form.class_id}
+              onChange={e => { setForm(p => ({ ...p, class_id: e.target.value })); if (errors.class_id) setErrors(p => ({ ...p, class_id: '' })) }}
             >
-              <option value="">— Select Stream —</option>
-              {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.name}</option>)}
+              <option value="">— Select Class —</option>
+              {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
             </select>
-            {errors.school_stream_id && <p className="text-xs text-red-500 mt-1">{errors.school_stream_id}</p>}
+            {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
           <FormField label="Session Year" required>
             <input

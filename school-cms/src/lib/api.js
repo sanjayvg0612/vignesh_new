@@ -116,8 +116,9 @@ export const roleApi = {
     if (params.is_active != null) q.set('is_active', params.is_active)
     return request('GET', `/api/employee/role/list?${q}`)
   },
-  create:  (body)     => request('POST', '/api/employee/role/create', body),
-  update:  (id, body) => request('PUT', `/api/employee/role/update/${id}`, body),
+  create:   (body)     => request('POST', '/api/employee/role/create', body),
+  update:   (id, body) => request('PUT', `/api/employee/role/update/${id}`, body),
+  dropdown: ()         => request('GET', '/api/employee/role/all'),
 }
 
 // ── EMPLOYEE ──────────────────────────────────────────────────────────────────
@@ -344,7 +345,7 @@ export const studentAttendanceApi = {
     return request('GET', `/api/attendance/student/attendance/list?${q}`)
   },
   bulkCreate: (body)     => request('POST', '/api/attendance/student/attendance/bulk', body),
-  update:     (id, body) => request('PUT', `/api/attendance/student/attendance/update/${id}`, body),
+  update:     (id, body) => request('PUT', `/api/attendance/student/attendance/update/?student_id=${id}`, body),
   delete:     (id)       => request('DELETE', `/api/attendance/student/attendance/delete/${id}`),
 }
 

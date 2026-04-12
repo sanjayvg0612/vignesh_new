@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader, Table, Pagination, Modal, FormField } from '@/components/ui'
-import { classSectionTeacherApi, employeeApi, classApi, subjectApi } from '@/lib/api'
+import { classSectionTeacherApi, employeeApi, classApi, sectionApi, subjectApi, groupApi } from '@/lib/api'
 
 const PER_PAGE = 10
 
@@ -15,11 +15,19 @@ export default function SubjectTeacherPage() {
   const [modalOpen, setModal] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
-  const [teachers, setTeachers] = useState([])
+
+  const [groups, setGroups]     = useState([])
   const [classes, setClasses]   = useState([])
+  const [sections, setSections] = useState([])
   const [subjects, setSubjects] = useState([])
-  const [form, setForm]         = useState({ class_id: '', emp_id: '', subject_id: '' })
-  const [errors, setErrors]     = useState({})
+  const [teachers, setTeachers] = useState([])
+
+  const [classLoading, setClassLoading]     = useState(false)
+  const [sectionLoading, setSectionLoading] = useState(false)
+  const [subjectLoading, setSubjectLoading] = useState(false)
+
+  const [form, setForm]     = useState({ group_id: '', class_id: '', section_id: '', subject_id: '', emp_id: '' })
+  const [errors, setErrors] = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -28,10 +36,9 @@ export default function SubjectTeacherPage() {
     try {
       const res    = await classSectionTeacherApi.list({ page, limit: PER_PAGE })
       const result = res.result || {}
-      const groups = Array.isArray(result.data) ? result.data : Array.isArray(result) ? result : []
-      // Keep only subject_teacher entries
-      const flat = []
-      groups.forEach(g => {
+      const list   = Array.isArray(result.data) ? result.data : Array.isArray(result) ? result : []
+      const flat   = []
+      list.forEach(g => {
         ;(g.subject_teachers || []).forEach(st => {
           flat.push({
             map_id:       st.map_id,
@@ -54,40 +61,72 @@ export default function SubjectTeacherPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Load subjects when class changes
-  useEffect(() => {
-    if (!form.class_id) { setSubjects([]); return }
-    subjectApi.dropdown({ class_id: form.class_id })
-      .then(r => setSubjects(r.result || []))
-      .catch(() => setSubjects([]))
-  }, [form.class_id])
-
   const closeModal = () => { setModal(false); setErrors({}) }
 
   const openModal = async (item = null) => {
     setEditing(item)
-    setForm(item ? {
-      class_id:   String(item.class_id   || ''),
-      emp_id:     String(item.emp_id     || ''),
-      subject_id: String(item.subject_id || ''),
-    } : { class_id: '', emp_id: '', subject_id: '' })
     setErrors({})
+    setClasses([])
+    setSections([])
+    setSubjects([])
+    setForm(item ? {
+      group_id:   '',
+      class_id:   String(item.class_id   || ''),
+      section_id: String(item.section_id || ''),
+      subject_id: String(item.subject_id || ''),
+      emp_id:     String(item.emp_id     || ''),
+    } : { group_id: '', class_id: '', section_id: '', subject_id: '', emp_id: '' })
+
     try {
-      const [teacherRes, classRes] = await Promise.all([
+      const [groupRes, teacherRes] = await Promise.all([
+        groupApi.dropdown(),
         employeeApi.dropdown(),
-        classApi.dropdown(),
       ])
-      setTeachers(teacherRes.result || [])
-      setClasses(classRes.result   || [])
-    } catch { setTeachers([]); setClasses([]) }
+      setGroups(Array.isArray(groupRes.result)   ? groupRes.result   : [])
+      setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result : [])
+    } catch { setGroups([]); setTeachers([]) }
+
     setModal(true)
+  }
+
+  const handleGroupChange = async (id) => {
+    setForm(p => ({ ...p, group_id: id, class_id: '', section_id: '', subject_id: '' }))
+    setClasses([]); setSections([]); setSubjects([])
+    if (errors.group_id) setErrors(p => ({ ...p, group_id: '' }))
+    if (!id) return
+    setClassLoading(true)
+    try {
+      const res = await classApi.dropdown({ school_group_id: id })
+      setClasses(Array.isArray(res.result) ? res.result : [])
+    } catch { setClasses([]) } finally { setClassLoading(false) }
+  }
+
+  const handleClassChange = async (id) => {
+    setForm(p => ({ ...p, class_id: id, section_id: '', subject_id: '' }))
+    setSections([]); setSubjects([])
+    if (errors.class_id) setErrors(p => ({ ...p, class_id: '' }))
+    if (!id) return
+    setSectionLoading(true)
+    setSubjectLoading(true)
+    try {
+      const [secRes, subRes] = await Promise.all([
+        sectionApi.dropdown({ class_id: id }),
+        subjectApi.dropdown({ class_id: id }),
+      ])
+      setSections(Array.isArray(secRes.result) ? secRes.result : [])
+      const subRaw = subRes.result
+      setSubjects(Array.isArray(subRaw) ? subRaw : Array.isArray(subRaw?.data) ? subRaw.data : [])
+    } catch { setSections([]); setSubjects([]) }
+    finally { setSectionLoading(false); setSubjectLoading(false) }
   }
 
   const validate = () => {
     const e = {}
-    if (!form.class_id) e.class_id = 'Class is required'
+    if (!form.group_id)   e.group_id   = 'Group is required'
+    if (!form.class_id)   e.class_id   = 'Class is required'
+    if (!form.section_id) e.section_id = 'Section is required'
     if (!form.subject_id) e.subject_id = 'Subject is required'
-    if (!form.emp_id) e.emp_id = 'Teacher is required'
+    if (!form.emp_id)     e.emp_id     = 'Teacher is required'
     return e
   }
 
@@ -98,9 +137,11 @@ export default function SubjectTeacherPage() {
     setSaving(true)
     try {
       const payload = {
-        emp_id:     parseInt(form.emp_id,     10),
-        class_id:   parseInt(form.class_id,   10),
-        subject_id: parseInt(form.subject_id, 10),
+        emp_id:          parseInt(form.emp_id,     10),
+        class_id:        parseInt(form.class_id,   10),
+        section_id:      parseInt(form.section_id, 10),
+        subject_id:      parseInt(form.subject_id, 10),
+        school_group_id: parseInt(form.group_id,   10),
       }
       if (editing) {
         await classSectionTeacherApi.update(editing.map_id, payload)
@@ -119,17 +160,12 @@ export default function SubjectTeacherPage() {
     catch (e) { alert(e.message) }
   }
 
-  const f = (k) => (e) => {
-    setForm(p => ({ ...p, [k]: e.target.value }))
-    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
-  }
-
   return (
     <div>
       <PageHeader
         title="Subject Teacher"
         subtitle="Assign subject teachers to classes and sections"
-        action={<button onClick={() => openModal()} className="btn-primary"><Plus className="w-4 h-4" /> Assign</button>}
+        action={<button onClick={() => openModal()} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Assign</button>}
       />
 
       {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
@@ -172,27 +208,75 @@ export default function SubjectTeacherPage() {
           </>
         }
       >
+        {/* Group */}
+        <FormField label="Group" required>
+          <select
+            className={`input ${errors.group_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.group_id}
+            onChange={e => handleGroupChange(e.target.value)}
+          >
+            <option value="">— Select Group —</option>
+            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+          {errors.group_id && <p className="text-xs text-red-500 mt-1">{errors.group_id}</p>}
+        </FormField>
+
+        {/* Class */}
         <FormField label="Class" required>
           <select
             className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.class_id}
-            onChange={e => { setForm(p => ({ ...p, class_id: e.target.value, subject_id: '' })); if (errors.class_id) setErrors(p => ({ ...p, class_id: '' })) }}
+            onChange={e => handleClassChange(e.target.value)}
+            disabled={classLoading || !form.group_id || classes.length === 0}
           >
-            <option value="">— Select Class —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value="">
+              {classLoading ? 'Loading...' : !form.group_id ? '— Select Group first —' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
+            </option>
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
           </select>
           {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
         </FormField>
+
+        {/* Section */}
+        <FormField label="Section" required>
+          <select
+            className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.section_id}
+            onChange={e => { setForm(p => ({ ...p, section_id: e.target.value })); if (errors.section_id) setErrors(p => ({ ...p, section_id: '' })) }}
+            disabled={sectionLoading || !form.class_id || sections.length === 0}
+          >
+            <option value="">
+              {sectionLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : sections.length === 0 ? 'No sections available' : '— Select Section —'}
+            </option>
+            {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_code}</option>)}
+          </select>
+          {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
+        </FormField>
+
+        {/* Subject */}
         <FormField label="Subject" required>
-          <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')} disabled={!form.class_id}>
-            <option value="">— Select Subject —</option>
+          <select
+            className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.subject_id}
+            onChange={e => { setForm(p => ({ ...p, subject_id: e.target.value })); if (errors.subject_id) setErrors(p => ({ ...p, subject_id: '' })) }}
+            disabled={subjectLoading || !form.class_id || subjects.length === 0}
+          >
+            <option value="">
+              {subjectLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : subjects.length === 0 ? 'No subjects available' : '— Select Subject —'}
+            </option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          {!form.class_id && <p className="text-xs text-gray-400 mt-1">Select a class first to load subjects</p>}
           {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
         </FormField>
+
+        {/* Teacher */}
         <FormField label="Teacher" required>
-          <select className={`input ${errors.emp_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.emp_id} onChange={f('emp_id')}>
+          <select
+            className={`input ${errors.emp_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+            value={form.emp_id}
+            onChange={e => { setForm(p => ({ ...p, emp_id: e.target.value })); if (errors.emp_id) setErrors(p => ({ ...p, emp_id: '' })) }}
+            disabled={teachers.length === 0}
+          >
             <option value="">— Select Teacher —</option>
             {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>

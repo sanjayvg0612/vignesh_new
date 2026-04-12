@@ -40,7 +40,7 @@ export default function ExamTimetablePage() {
 
   // Load dropdowns once
   useEffect(() => {
-    examApi.list({ limit: 200 }).then(r => setExams(r.result?.data || [])).catch(() => setExams([]))
+    examApi.list({ limit: 100 }).then(r => setExams(r.result?.data || [])).catch(() => setExams([]))
     streamApi.dropdown().then(r => setStreams(r.result || [])).catch(() => setStreams([]))
     groupApi.dropdown().then(r => setGroups(r.result || [])).catch(() => setGroups([]))
     subjectApi.dropdown({ limit: 500 }).then(r => setSubjects(r.result || [])).catch(() => setSubjects([]))
@@ -218,7 +218,7 @@ export default function ExamTimetablePage() {
           <FormField label="Stream" required>
             <select className={`input ${errors.school_stream_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_stream_id} onChange={f('school_stream_id')}>
               <option value="">— Select Stream —</option>
-              {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.name}</option>)}
+              {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.stream_name}</option>)}
             </select>
             {errors.school_stream_id && <p className="text-xs text-red-500 mt-1">{errors.school_stream_id}</p>}
           </FormField>

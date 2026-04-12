@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { PageHeader, Table } from '@/components/ui'
+import { Pencil } from 'lucide-react'
+import { PageHeader, Table, Modal } from '@/components/ui'
 import { studentAttendanceApi, studentApi, classApi, sectionApi, groupApi } from '@/lib/api'
 
 const SCHOOL_ID  = 1
-const STATUS_NEXT  = { P: 'A', A: 'P' }
 const STATUS_LABEL = { P: 'Present', A: 'Absent' }
 const STATUS_COLOR = {
   P: 'bg-green-100 text-green-700 border-green-300',
@@ -23,7 +23,7 @@ export default function StudentAttendancePage() {
   const [sectionId, setSectionId] = useState('')
   const [date, setDate]           = useState(new Date().toISOString().split('T')[0])
 
-  const [search, setSearch]             = useState('')
+  const [search, setSearch]                   = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving]   = useState(false)
@@ -32,6 +32,13 @@ export default function StudentAttendancePage() {
 
   const [classLoading, setClassLoading]     = useState(false)
   const [sectionLoading, setSectionLoading] = useState(false)
+
+  // Edit popup state
+  const [editStudent, setEditStudent]   = useState(null)
+  const [editStatus, setEditStatus]     = useState('P')
+  const [editSaving, setEditSaving]     = useState(false)
+  const [editError, setEditError]       = useState('')
+  const [editModalOpen, setEditModal]   = useState(false)
 
   // Load groups on mount
   useEffect(() => {
@@ -78,44 +85,41 @@ export default function StudentAttendancePage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  // Load students when class + section selected (no search)
+  // Load students — search takes priority; falls back to class+section; clears if neither
   useEffect(() => {
-    if (!classId || !sectionId) { setStudents([]); setStatuses({}); return }
-    setLoading(true)
-    setError('')
-    studentApi.list({ school_id: SCHOOL_ID, class_id: classId, section_id: sectionId, limit: 100 })
-      .then(res => {
-        const list = res.result?.data || []
-        setStudents(list)
-        const init = {}
-        list.forEach(s => { init[s.student_id] = 'P' })
-        setStatuses(init)
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [classId, sectionId])
-
-  // Search students by name/ID via API
-  useEffect(() => {
-    if (!debouncedSearch.trim()) return
-    setLoading(true)
-    setError('')
-    studentApi.list({ school_id: SCHOOL_ID, limit: 100, search: debouncedSearch })
-      .then(res => {
-        const list = res.result?.data || []
-        setStudents(list)
-        const init = {}
-        list.forEach(s => { init[s.student_id] = 'P' })
-        setStatuses(init)
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [debouncedSearch])
-
-  const toggle = (id) => {
-    setSaved(false)
-    setStatuses(p => ({ ...p, [id]: STATUS_NEXT[p[id]] || 'P' }))
-  }
+    if (debouncedSearch.trim()) {
+      setLoading(true)
+      setError('')
+      studentApi.list({ school_id: SCHOOL_ID, limit: 100, search: debouncedSearch })
+        .then(res => {
+          const list = res.result?.data || []
+          setStudents(list)
+          const init = {}
+          list.forEach(s => { init[s.student_id] = 'P' })
+          setStatuses(init)
+        })
+        .catch(e => setError(e.message))
+        .finally(() => setLoading(false))
+      return
+    }
+    if (classId && sectionId) {
+      setLoading(true)
+      setError('')
+      studentApi.list({ school_id: SCHOOL_ID, class_id: classId, section_id: sectionId, limit: 100 })
+        .then(res => {
+          const list = res.result?.data || []
+          setStudents(list)
+          const init = {}
+          list.forEach(s => { init[s.student_id] = 'P' })
+          setStatuses(init)
+        })
+        .catch(e => setError(e.message))
+        .finally(() => setLoading(false))
+      return
+    }
+    setStudents([])
+    setStatuses({})
+  }, [classId, sectionId, debouncedSearch])
 
   const markAll = (status) => {
     setSaved(false)
@@ -125,8 +129,12 @@ export default function StudentAttendancePage() {
   }
 
   const handleSave = async () => {
-    if (!students.length || !classId || !sectionId || !groupId) {
-      setError('Please select Group, Class, Section and Date before saving.')
+    if (!students.length) {
+      setError('No students to save attendance for.')
+      return
+    }
+    if (!groupId || !classId || !sectionId) {
+      setError('Please select Group, Class and Section before saving attendance.')
       return
     }
     setSaving(true); setError('')
@@ -147,6 +155,33 @@ export default function StudentAttendancePage() {
     finally { setSaving(false) }
   }
 
+  // Open edit popup for a single student
+  const openEdit = (s) => {
+    setEditStudent(s)
+    setEditStatus(statuses[s.student_id] || 'P')
+    setEditError('')
+    setEditModal(true)
+  }
+
+  // Save single student attendance via update API
+  const handleEditSave = async () => {
+    setEditSaving(true)
+    setEditError('')
+    try {
+      await studentAttendanceApi.update(editStudent.student_id, {
+        status:       editStatus,
+        attendance_dt: date,
+      })
+      // Update local status so table reflects change immediately
+      setStatuses(p => ({ ...p, [editStudent.student_id]: editStatus }))
+      setEditModal(false)
+    } catch (e) {
+      setEditError(e.message)
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const present = Object.values(statuses).filter(s => s === 'P').length
   const absent  = Object.values(statuses).filter(s => s === 'A').length
 
@@ -162,8 +197,8 @@ export default function StudentAttendancePage() {
         }
       />
 
-      {saved  && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">Attendance saved successfully!</div>}
-      {error  && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
+      {saved && <div className="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">Attendance saved successfully!</div>}
+      {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
 
       {/* Filters */}
       <div className="card p-4 mb-4 flex gap-4 flex-wrap items-end">
@@ -204,6 +239,26 @@ export default function StudentAttendancePage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+        <div className="flex items-end">
+          <button
+            className="btn-secondary text-xs"
+            onClick={() => {
+              setGroupId('')
+              setClassId('')
+              setSectionId('')
+              setSearch('')
+              setDebouncedSearch('')
+              setClasses([])
+              setSections([])
+              setStudents([])
+              setStatuses({})
+              setError('')
+              setDate(new Date().toISOString().split('T')[0])
+            }}
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
@@ -252,14 +307,11 @@ export default function StudentAttendancePage() {
                   </td>
                   <td className="table-td">
                     <button
-                      onClick={() => toggle(s.student_id)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        st === 'P'
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                          : 'bg-green-50 text-green-600 hover:bg-green-100'
-                      }`}
+                      onClick={() => openEdit(s)}
+                      className="p-1.5 rounded hover:bg-primary-50 text-primary-600"
+                      title="Edit Attendance"
                     >
-                      {st === 'P' ? 'Mark Absent' : 'Mark Present'}
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>
@@ -268,6 +320,78 @@ export default function StudentAttendancePage() {
           </Table>
         </div>
       )}
+
+      {/* Edit Attendance Modal */}
+      <Modal
+        open={editModalOpen}
+        onClose={() => setEditModal(false)}
+        title="Edit Attendance"
+        footer={
+          <>
+            <button onClick={() => setEditModal(false)} className="btn-secondary">Cancel</button>
+            <button onClick={handleEditSave} className="btn-primary" disabled={editSaving}>
+              {editSaving ? 'Saving...' : 'Save'}
+            </button>
+          </>
+        }
+      >
+        {editStudent && (
+          <div className="space-y-4">
+            {/* Student Info */}
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">Student Name</span>
+                <span className="text-sm font-semibold text-gray-900">{editStudent.first_name} {editStudent.last_name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">Roll No</span>
+                <span className="text-sm text-gray-700">{editStudent.student_roll_id || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">Date</span>
+                <span className="text-sm text-gray-700">{date}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">Current Status</span>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_COLOR[statuses[editStudent.student_id] || 'P']}`}>
+                  {STATUS_LABEL[statuses[editStudent.student_id] || 'P']}
+                </span>
+              </div>
+            </div>
+
+            {/* Mark Status Buttons */}
+            <div>
+              <p className="text-xs font-medium text-gray-600 mb-2">Mark Attendance</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditStatus('P')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                    editStatus === 'P'
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-green-400 hover:text-green-600'
+                  }`}
+                >
+                  ✓ Mark as Present
+                </button>
+                <button
+                  onClick={() => setEditStatus('A')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                    editStatus === 'A'
+                      ? 'bg-red-500 border-red-500 text-white'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-red-400 hover:text-red-600'
+                  }`}
+                >
+                  ✗ Mark as Absent
+                </button>
+              </div>
+            </div>
+
+            {editError && (
+              <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
