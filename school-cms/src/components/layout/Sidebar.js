@@ -42,7 +42,7 @@ const NAV = [
     { label: 'All Teachers',          href: '/admin/teachers',                  icon: GraduationCap },
     { label: 'Class Teacher',         href: '/admin/teachers/class-teacher',    icon: ClipboardCheck },
     { label: 'Subject Teacher',       href: '/admin/teachers/subject-teacher',  icon: BookOpen },
-    { label: 'Section & Class View',  href: '/admin/teachers/section-class',    icon: LayoutList },
+    { label: 'Class Section & Teacher View',  href: '/admin/teachers/section-class',    icon: LayoutList },
   ]},
   { label: 'Attendance', icon: ClipboardList, children: [
     { label: 'Student Attendance', href: '/admin/attendance/student', icon: Users },

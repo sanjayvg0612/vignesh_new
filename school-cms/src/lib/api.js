@@ -168,6 +168,18 @@ export const employeeApi = {
   },
 }
 
+// ── CLASS TEACHER ─────────────────────────────────────────────────────────────
+
+export const classTeacherApi = {
+  create: (body) => request('POST', '/api/teacher/class_teacher/create', body),
+}
+
+// ── SUBJECT TEACHER ───────────────────────────────────────────────────────────
+
+export const subjectTeacherApi = {
+  create: (body) => request('POST', '/api/teacher/subject_teacher/create', body),
+}
+
 // ── CLASS SECTION TEACHERS ────────────────────────────────────────────────────
 
 export const classSectionTeacherApi = {

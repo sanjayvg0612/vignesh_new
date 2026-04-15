@@ -1,8 +1,8 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { PageHeader, Table, Pagination, Modal, FormField } from '@/components/ui'
-import { classSectionTeacherApi, employeeApi, classApi, sectionApi, subjectApi, groupApi } from '@/lib/api'
+import { PageHeader, SearchBar, Table, Pagination, Modal, FormField } from '@/components/ui'
+import { classSectionTeacherApi, subjectTeacherApi, employeeApi, classApi, sectionApi, subjectApi, groupApi } from '@/lib/api'
 
 const PER_PAGE = 10
 
@@ -28,13 +28,14 @@ export default function SubjectTeacherPage() {
 
   const [form, setForm]     = useState({ group_id: '', class_id: '', section_id: '', subject_id: '', emp_id: '' })
   const [errors, setErrors] = useState({})
+  const [search, setSearch] = useState('')
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const res    = await classSectionTeacherApi.list({ page, limit: PER_PAGE })
+      const res    = await classSectionTeacherApi.list({ page, limit: PER_PAGE, search: search || undefined })
       const result = res.result || {}
       const list   = Array.isArray(result.data) ? result.data : Array.isArray(result) ? result : []
       const flat   = []
@@ -57,7 +58,7 @@ export default function SubjectTeacherPage() {
       setTotal(result.total || flat.length)
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
-  }, [page])
+  }, [page, search])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -82,9 +83,28 @@ export default function SubjectTeacherPage() {
         groupApi.dropdown(),
         employeeApi.dropdown(),
       ])
-      setGroups(Array.isArray(groupRes.result)   ? groupRes.result   : [])
+      setGroups(Array.isArray(groupRes.result)    ? groupRes.result    : [])
       setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result : [])
     } catch { setGroups([]); setTeachers([]) }
+
+    // Edit mode: load classes, sections and subjects for the existing values
+    if (item?.class_id) {
+      setClassLoading(true)
+      setSectionLoading(true)
+      setSubjectLoading(true)
+      try {
+        const [classRes, secRes, subRes] = await Promise.all([
+          classApi.dropdown(),
+          sectionApi.dropdown({ class_id: item.class_id }),
+          subjectApi.dropdown({ class_id: item.class_id }),
+        ])
+        setClasses(Array.isArray(classRes.result) ? classRes.result : [])
+        setSections(Array.isArray(secRes.result)  ? secRes.result   : [])
+        const subRaw = subRes.result
+        setSubjects(Array.isArray(subRaw) ? subRaw : Array.isArray(subRaw?.data) ? subRaw.data : [])
+      } catch { setClasses([]); setSections([]); setSubjects([]) }
+      finally { setClassLoading(false); setSectionLoading(false); setSubjectLoading(false) }
+    }
 
     setModal(true)
   }
@@ -137,16 +157,15 @@ export default function SubjectTeacherPage() {
     setSaving(true)
     try {
       const payload = {
-        emp_id:          parseInt(form.emp_id,     10),
-        class_id:        parseInt(form.class_id,   10),
-        section_id:      parseInt(form.section_id, 10),
-        subject_id:      parseInt(form.subject_id, 10),
-        school_group_id: parseInt(form.group_id,   10),
+        class_id:   parseInt(form.class_id,   10),
+        emp_id:     parseInt(form.emp_id,     10),
+        section_id: parseInt(form.section_id, 10),
+        subject_id: parseInt(form.subject_id, 10),
       }
       if (editing) {
         await classSectionTeacherApi.update(editing.map_id, payload)
       } else {
-        await classSectionTeacherApi.create(payload)
+        await subjectTeacherApi.create(payload)
       }
       setModal(false)
       fetchData()
@@ -171,6 +190,10 @@ export default function SubjectTeacherPage() {
       {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
 
       <div className="card">
+        <div className="p-4 border-b border-gray-100 flex items-center gap-3 flex-wrap">
+          <SearchBar value={search} onChange={v => { setSearch(v); setPage(1) }} placeholder="Search by class, subject or teacher..." />
+          <span className="text-sm text-gray-500 ml-auto">{total} records</span>
+        </div>
         <Table headers={['Sl No.', 'Class', 'Section', 'Teacher', 'Subject', 'Actions']} empty={!loading && rows.length === 0}>
           {loading ? (
             <tr><td colSpan={6} className="table-td text-center text-gray-400 py-8">Loading...</td></tr>
@@ -278,7 +301,7 @@ export default function SubjectTeacherPage() {
             disabled={teachers.length === 0}
           >
             <option value="">— Select Teacher —</option>
-            {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {teachers.map(t => <option key={t.emp_id} value={t.emp_id}>{t.name}</option>)}
           </select>
           {errors.emp_id && <p className="text-xs text-red-500 mt-1">{errors.emp_id}</p>}
         </FormField>
