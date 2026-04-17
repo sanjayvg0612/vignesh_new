@@ -131,20 +131,53 @@ export default function StudentDiaryPage() {
     }, 400)
   }
 
-  const selectStudent = (s) => {
+  const selectStudent = async (s) => {
     setSelectedStudent(s)
-    setForm(f => ({ ...f, student_id: s.student_id }))
     setStudentSearch('')
     setStudentResults([])
     setShowStudentResults(false)
     if (formErrors.student_id) setFormErrors(p => ({ ...p, student_id: '' }))
+
+    const classId   = s.class_id
+    const sectionId = s.section_id
+
+    setForm(f => ({
+      ...f,
+      student_id: s.student_id,
+      class_id:   classId   ? String(classId)   : f.class_id,
+      section_id: sectionId ? String(sectionId) : '',
+      subject_id: '',
+    }))
+
+    if (classId) {
+      setFormSectionLoading(true)
+      setFormSubjectLoading(true)
+      setFormSections([])
+      setFormSubjects([])
+      try {
+        const [secRes, subRes] = await Promise.all([
+          sectionApi.dropdown({ class_id: classId }),
+          subjectApi.dropdown({ class_id: classId }),
+        ])
+        setFormSections(Array.isArray(secRes.result) ? secRes.result : [])
+        setFormSubjects(Array.isArray(subRes.result) ? subRes.result : [])
+      } catch {
+        setFormSections([])
+        setFormSubjects([])
+      } finally {
+        setFormSectionLoading(false)
+        setFormSubjectLoading(false)
+      }
+    }
   }
 
   const clearStudent = () => {
     setSelectedStudent(null)
     setStudentSearch('')
     setStudentResults([])
-    setForm(f => ({ ...f, student_id: '' }))
+    setForm(f => ({ ...f, student_id: '', class_id: '', section_id: '', subject_id: '' }))
+    setFormSections([])
+    setFormSubjects([])
   }
 
   // Form class → section/subject cascade
@@ -314,6 +347,12 @@ export default function StudentDiaryPage() {
             <option value="">All Status</option>
             {DIARY_STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
+          <button
+            onClick={() => { setFilterClass(''); setFilterSection(''); setFilterSubject(''); setFilterDate(''); setFilterStatus(''); setFilterSections([]); setFilterSubjects([]); setPage(1) }}
+            className="btn-secondary text-xs px-3 py-1.5"
+          >
+            Clear Filters
+          </button>
           <span className="text-sm text-gray-500 ml-auto">{total} records</span>
         </div>
 
@@ -464,7 +503,7 @@ export default function StudentDiaryPage() {
             <option value="">
               {formSubjectLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : formSubjects.length === 0 ? 'No subjects' : '— Select Subject —'}
             </option>
-            {formSubjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name || s.subject_code}</option>)}
+            {formSubjects.map(s => <option key={s.id} value={s.id}>{s.name || s.subject_code}</option>)}
           </select>
         </FormField>
 

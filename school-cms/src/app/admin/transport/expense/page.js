@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { vehicleExpenseApi } from '@/lib/api'
+import { vehicleExpenseApi, vehicleApi } from '@/lib/api'
 import { PageHeader, Table, Pagination, Modal, FormField } from '@/components/ui'
 
 const PER_PAGE = 10
@@ -18,6 +18,7 @@ export default function VehicleExpensePage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState(EMPTY_FORM)
   const [errors, setErrors]   = useState({})
+  const [vehicles, setVehicles] = useState([])
   const [imageFile, setImageFile] = useState(null)
   const fileRef = useRef(null)
 
@@ -34,6 +35,10 @@ export default function VehicleExpensePage() {
   }, [page])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    vehicleApi.dropdown().then(r => setVehicles(Array.isArray(r.result) ? r.result : [])).catch(() => setVehicles([]))
+  }, [])
 
   const closeModal = () => { setModal(false); setErrors({}); setImageFile(null); if (fileRef.current) fileRef.current.value = '' }
   const openAdd  = () => { setEditing(null); setForm(EMPTY_FORM); setErrors({}); setImageFile(null); setModal(true) }
@@ -117,8 +122,11 @@ export default function VehicleExpensePage() {
         footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button></>}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Vehicle ID">
-              <input className="input" type="number" value={form.vehicle_id} onChange={f('vehicle_id')} placeholder="1" />
+            <FormField label="Vehicle">
+              <select className="input" value={form.vehicle_id} onChange={f('vehicle_id')}>
+                <option value="">— Select Vehicle —</option>
+                {vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicle_name || v.vehicle_no || v.name || `Vehicle #${v.id}`}</option>)}
+              </select>
             </FormField>
             <FormField label="Session Year">
               <input className="input" value={form.session_yr} onChange={f('session_yr')} placeholder="2024-25" />

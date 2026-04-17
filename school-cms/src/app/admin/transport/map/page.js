@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { vehicleRouteMapApi } from '@/lib/api'
+import { vehicleRouteMapApi, routeApi, vehicleApi } from '@/lib/api'
 import { PageHeader, Table, Pagination, Modal, FormField, SearchBar } from '@/components/ui'
 
 const PER_PAGE = 10
@@ -18,6 +18,8 @@ export default function TransportMapPage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState(EMPTY_FORM)
   const [errors, setErrors]   = useState({})
+  const [routes, setRoutes]   = useState([])
+  const [vehicles, setVehicles] = useState([])
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -33,6 +35,11 @@ export default function TransportMapPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  useEffect(() => {
+    routeApi.dropdown().then(r => setRoutes(Array.isArray(r.result) ? r.result : [])).catch(() => setRoutes([]))
+    vehicleApi.dropdown().then(r => setVehicles(Array.isArray(r.result) ? r.result : [])).catch(() => setVehicles([]))
+  }, [])
+
   const closeModal = () => { setModal(false); setErrors({}) }
   const openAdd  = () => { setEditing(null); setForm(EMPTY_FORM); setErrors({}); setModal(true) }
   const openEdit = (m) => {
@@ -45,6 +52,8 @@ export default function TransportMapPage() {
 
   const validate = () => {
     const e = {}
+    if (!form.route_id)           e.route_id   = 'Route is required'
+    if (!form.vehicle_id)         e.vehicle_id = 'Vehicle is required'
     if (!form.driver_name.trim()) e.driver_name = 'Driver name is required'
     if (!form.helper_name.trim()) e.helper_name = 'Helper name is required'
     return e
@@ -108,11 +117,27 @@ export default function TransportMapPage() {
         footer={<><button onClick={closeModal} className="btn-secondary">Cancel</button><button onClick={handleSave} className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button></>}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Route ID">
-              <input className="input" type="number" value={form.route_id} onChange={f('route_id')} placeholder="1" />
+            <FormField label="Route" required>
+              <select
+                className={`input ${errors.route_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+                value={form.route_id}
+                onChange={f('route_id')}
+              >
+                <option value="">— Select Route —</option>
+                {routes.map(r => <option key={r.id} value={r.id}>{r.route_name || r.name || `Route #${r.id}`}</option>)}
+              </select>
+              {errors.route_id && <p className="text-xs text-red-500 mt-1">{errors.route_id}</p>}
             </FormField>
-            <FormField label="Vehicle ID">
-              <input className="input" type="number" value={form.vehicle_id} onChange={f('vehicle_id')} placeholder="1" />
+            <FormField label="Vehicle" required>
+              <select
+                className={`input ${errors.vehicle_id ? 'border-red-400 focus:ring-red-400' : ''}`}
+                value={form.vehicle_id}
+                onChange={f('vehicle_id')}
+              >
+                <option value="">— Select Vehicle —</option>
+                {vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicle_name || v.vehicle_no || v.name || `Vehicle #${v.id}`}</option>)}
+              </select>
+              {errors.vehicle_id && <p className="text-xs text-red-500 mt-1">{errors.vehicle_id}</p>}
             </FormField>
           </div>
           <FormField label="Driver Name" required>

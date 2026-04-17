@@ -28,6 +28,15 @@ function qs(params = {}) {
   return q.toString()
 }
 
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+
+export const dashboardApi = {
+  overview:              () => request('GET', '/api/dashboard/overview'),
+  birthdays:             () => request('GET', '/api/dashboard/birthdays/today'),
+  studentAttendanceToday:() => request('GET', '/api/attendance/student/attendance/count/today'),
+  employeeAttendanceToday:()=> request('GET', '/api/attendance/employee/attendance/count/today'),
+}
+
 // ── SCHOOL GROUP ─────────────────────────────────────────────────────────────
 
 export const groupApi = {
@@ -372,10 +381,11 @@ export const vehicleApi = {
     if (params.status) q.set('status', params.status)
     return request('GET', `/api/transport/vehicle/list?${q}`)
   },
-  getById: (id)          => request('GET', `/api/transport/vehicle/get/${id}`),
-  create:  (body)        => request('POST', '/api/transport/vehicle/create', body),
-  update:  (id, body)    => request('PUT', `/api/transport/vehicle/update/${id}`, body),
-  delete:  (id)          => request('DELETE', `/api/transport/vehicle/delete/${id}`),
+  getById:  (id)         => request('GET', `/api/transport/vehicle/get/${id}`),
+  create:   (body)       => request('POST', '/api/transport/vehicle/create', body),
+  update:   (id, body)   => request('PUT', `/api/transport/vehicle/update/${id}`, body),
+  delete:   (id)         => request('DELETE', `/api/transport/vehicle/delete/${id}`),
+  dropdown: ()           => request('GET', '/api/transport/vehicle/all'),
 }
 
 // ── TRANSPORT ROUTE ───────────────────────────────────────────────────────────
@@ -389,10 +399,11 @@ export const routeApi = {
     if (params.status) q.set('status', params.status)
     return request('GET', `/api/transport/route/list?${q}`)
   },
-  getById: (id)          => request('GET', `/api/transport/route/get/${id}`),
-  create:  (body)        => request('POST', '/api/transport/route/create', body),
-  update:  (id, body)    => request('PUT', `/api/transport/route/update/${id}`, body),
-  delete:  (id)          => request('DELETE', `/api/transport/route/delete/${id}`),
+  getById:  (id)         => request('GET', `/api/transport/route/get/${id}`),
+  create:   (body)       => request('POST', '/api/transport/route/create', body),
+  update:   (id, body)   => request('PUT', `/api/transport/route/update/${id}`, body),
+  delete:   (id)         => request('DELETE', `/api/transport/route/delete/${id}`),
+  dropdown: ()           => request('GET', '/api/transport/route/all'),
 }
 
 // ── TRANSPORT VEHICLE ROUTE MAP ───────────────────────────────────────────────
@@ -495,22 +506,16 @@ export const announcementApi = {
   },
   getById: (id)          => request('GET', `/api/announcement/get/${id}`),
   create:  (payload, file) => {
-    if (file) {
-      const form = new FormData()
-      form.append('payload', JSON.stringify(payload))
-      form.append('file', file)
-      return fetch(`${BASE_URL}/api/announcement/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
-    }
-    return request('POST', '/api/announcement/create', payload)
+    const form = new FormData()
+    Object.entries(payload).forEach(([k, v]) => { if (v !== undefined && v !== null) form.append(k, v) })
+    if (file) form.append('file', file)
+    return fetch(`${BASE_URL}/api/announcement/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
   },
   update:  (id, payload, file) => {
-    if (file) {
-      const form = new FormData()
-      form.append('payload', JSON.stringify(payload))
-      form.append('file', file)
-      return fetch(`${BASE_URL}/api/announcement/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
-    }
-    return request('PUT', `/api/announcement/update/${id}`, payload)
+    const form = new FormData()
+    Object.entries(payload).forEach(([k, v]) => { if (v !== undefined && v !== null) form.append(k, v) })
+    if (file) form.append('file', file)
+    return fetch(`${BASE_URL}/api/announcement/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
   },
   delete:  (id)          => request('DELETE', `/api/announcement/delete/${id}`),
   fileUrl: (id)          => `${BASE_URL}/api/announcement/file/${id}`,
