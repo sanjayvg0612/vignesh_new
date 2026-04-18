@@ -33,8 +33,16 @@ function qs(params = {}) {
 export const dashboardApi = {
   overview:              () => request('GET', '/api/dashboard/overview'),
   birthdays:             () => request('GET', '/api/dashboard/birthdays/today'),
-  studentAttendanceToday:() => request('GET', '/api/attendance/student/attendance/count/today'),
-  employeeAttendanceToday:()=> request('GET', '/api/attendance/employee/attendance/count/today'),
+  studentAttendanceToday: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    return request('GET', `/api/attendance/student/attendance/count/today?${q}`)
+  },
+  employeeAttendanceToday: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    return request('GET', `/api/attendance/employee/attendance/count/today?${q}`)
+  },
 }
 
 // ── SCHOOL GROUP ─────────────────────────────────────────────────────────────
@@ -134,10 +142,11 @@ export const roleApi = {
 
 function qsEmployee(params = {}) {
   const q = new URLSearchParams()
-  if (params.page)    q.set('page',    params.page)
-  if (params.limit)   q.set('limit',   params.limit)
-  if (params.search)  q.set('search',  params.search)
-  if (params.role_id) q.set('role_id', params.role_id)
+  if (params.page)            q.set('page',            params.page)
+  if (params.limit)           q.set('limit',           params.limit)
+  if (params.search)          q.set('search',          params.search)
+  if (params.role_id)         q.set('role_id',         params.role_id)
+  if (params.school_group_id) q.set('school_group_id', params.school_group_id)
   return q.toString()
 }
 
@@ -533,22 +542,16 @@ export const notificationApi = {
   },
   getById: (id)          => request('GET', `/api/notification/get/${id}`),
   create:  (payload, image) => {
-    if (image) {
-      const form = new FormData()
-      form.append('payload', JSON.stringify(payload))
-      form.append('image', image)
-      return fetch(`${BASE_URL}/api/notification/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
-    }
-    return request('POST', '/api/notification/create', payload)
+    const form = new FormData()
+    Object.entries(payload).forEach(([k, v]) => { if (v !== undefined && v !== null) form.append(k, v) })
+    if (image) form.append('image', image)
+    return fetch(`${BASE_URL}/api/notification/create`, { method: 'POST', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
   },
   update:  (id, payload, image) => {
-    if (image) {
-      const form = new FormData()
-      form.append('payload', JSON.stringify(payload))
-      form.append('image', image)
-      return fetch(`${BASE_URL}/api/notification/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
-    }
-    return request('PUT', `/api/notification/update/${id}`, payload)
+    const form = new FormData()
+    Object.entries(payload).forEach(([k, v]) => { if (v !== undefined && v !== null) form.append(k, v) })
+    if (image) form.append('image', image)
+    return fetch(`${BASE_URL}/api/notification/update/${id}`, { method: 'PUT', headers: { 'client_key': CLIENT_KEY }, body: form }).then(r => r.json())
   },
   delete:  (id)          => request('DELETE', `/api/notification/delete/${id}`),
   imageUrl:(id)          => `${BASE_URL}/api/notification/image/${id}`,

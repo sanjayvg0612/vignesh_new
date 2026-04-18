@@ -5,10 +5,11 @@ import { PageHeader, Table, Modal } from '@/components/ui'
 import { studentAttendanceApi, studentApi, classApi, sectionApi, groupApi } from '@/lib/api'
 
 const SCHOOL_ID  = 1
-const STATUS_LABEL = { P: 'Present', A: 'Absent' }
+const STATUS_LABEL = { P: 'Present', A: 'Absent', L: 'Leave' }
 const STATUS_COLOR = {
   P: 'bg-green-100 text-green-700 border-green-300',
   A: 'bg-red-100 text-red-600 border-red-300',
+  L: 'bg-yellow-100 text-yellow-700 border-yellow-300',
 }
 
 export default function StudentAttendancePage() {
@@ -184,6 +185,7 @@ export default function StudentAttendancePage() {
 
   const present = Object.values(statuses).filter(s => s === 'P').length
   const absent  = Object.values(statuses).filter(s => s === 'A').length
+  const leave   = Object.values(statuses).filter(s => s === 'L').length
 
   return (
     <div>
@@ -206,7 +208,7 @@ export default function StudentAttendancePage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Group <span className="text-red-500">*</span></label>
           <select className="input w-36" value={groupId} onChange={e => handleGroupChange(e.target.value)}>
             <option value="">— Select —</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
           </select>
         </div>
         <div>
@@ -273,6 +275,10 @@ export default function StudentAttendancePage() {
             <div className="card px-4 py-3 text-center min-w-[80px]">
               <p className="text-xl font-bold text-red-500" style={{fontFamily:'Outfit'}}>{absent}</p>
               <p className="text-xs text-gray-500">Absent</p>
+            </div>
+            <div className="card px-4 py-3 text-center min-w-[80px]">
+              <p className="text-xl font-bold text-yellow-600" style={{fontFamily:'Outfit'}}>{leave}</p>
+              <p className="text-xs text-gray-500">Leave</p>
             </div>
             <div className="card px-4 py-3 text-center min-w-[80px]">
               <p className="text-xl font-bold text-gray-700" style={{fontFamily:'Outfit'}}>{students.length}</p>
@@ -382,6 +388,16 @@ export default function StudentAttendancePage() {
                   }`}
                 >
                   ✗ Mark as Absent
+                </button>
+                <button
+                  onClick={() => setEditStatus('L')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                    editStatus === 'L'
+                      ? 'bg-yellow-500 border-yellow-500 text-white'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-yellow-400 hover:text-yellow-600'
+                  }`}
+                >
+                  ◷ Mark as Leave
                 </button>
               </div>
             </div>

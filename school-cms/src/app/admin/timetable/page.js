@@ -179,7 +179,7 @@ export default function TimetablePage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Class</label>
           <select className="input w-40" value={filterClassId} onChange={e => { setFilterClassId(e.target.value); setPage(1) }}>
             <option value="">— All Classes —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code} {c.stream_name && ` - ${c.stream_name}`}</option>)}
           </select>
         </div>
         <div>
@@ -259,14 +259,14 @@ export default function TimetablePage() {
           <FormField label="Group" required>
             <select className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_group_id} onChange={f('school_group_id')}>
               <option value="">— Select Group —</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
             </select>
             {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
           </FormField>
           <FormField label="Class" required>
             <select className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.class_id} onChange={f('class_id')}>
               <option value="">— Select Class —</option>
-              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code} {c.stream_name && ` - ${c.stream_name}`}</option>)}
             </select>
             {errors.class_id && <p className="text-xs text-red-500 mt-1">{errors.class_id}</p>}
           </FormField>
@@ -275,7 +275,7 @@ export default function TimetablePage() {
           <FormField label="Section" required>
             <select className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.section_id} onChange={f('section_id')} disabled={!form.class_id}>
               <option value="">— Select Section —</option>
-              {sections.map(s => <option key={s.school_stream_id} value={s.id}>{s.name}</option>)}
+              {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_code}</option>)}
             </select>
             {errors.section_id && <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>}
           </FormField>

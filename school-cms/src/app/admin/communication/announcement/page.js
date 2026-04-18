@@ -8,7 +8,7 @@ import clsx from 'clsx'
 export default function AnnouncementPage() {
   const [data, setData] = useState(ANNOUNCEMENTS)
   const [modalOpen, setModal] = useState(false)
-  const [form, setForm] = useState({ title:'', content:'', priority:'Normal', date:'' })
+  const [form, setForm] = useState({ title:'', content:'',  date:'' })
   const [errors, setErrors] = useState({})
 
   const f = (k) => (e) => { setForm(p => ({ ...p, [k]: e.target.value })); if(errors[k]) setErrors(p=>({...p,[k]:''})) }
@@ -34,7 +34,7 @@ export default function AnnouncementPage() {
   return (
     <div>
       <PageHeader title="Announcements" subtitle="Post important announcements for the school community"
-        action={<button onClick={() => { setForm({ title:'',content:'',priority:'Normal',date:'' }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Announcement</button>}
+        action={<button onClick={() => { setForm({ title:'',content:'',date:'' }); setErrors({}); setModal(true) }} className="btn-primary"><Plus className="w-4 h-4" /> Add Announcement</button>}
       />
       <div className="space-y-3">
         {data.map(a => (
@@ -42,7 +42,7 @@ export default function AnnouncementPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={clsx('badge', priorityColor[a.priority]||'badge-gray')}>{a.priority}</span>
+                  {/* <span className={clsx('badge', priorityColor[a.priority]||'badge-gray')}>{a.priority}</span> */}
                   <span className="text-xs text-gray-400">{a.date}</span>
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-1" style={{fontFamily:'Outfit'}}>{a.title}</h3>
@@ -63,9 +63,6 @@ export default function AnnouncementPage() {
           </FormField>
           <FormField label="Content"><textarea className="input" rows={4} value={form.content} onChange={f('content')} /></FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Priority">
-              <select className="input" value={form.priority} onChange={f('priority')}><option>High</option><option>Normal</option><option>Low</option></select>
-            </FormField>
             <FormField label="Date"><input className="input" type="date" value={form.date} onChange={f('date')} /></FormField>
           </div>
         </div>

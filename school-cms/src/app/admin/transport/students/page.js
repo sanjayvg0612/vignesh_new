@@ -328,7 +328,7 @@ export default function TransportStudentsPage() {
               onChange={e => handleGroupChange(e.target.value)}
             >
               <option value="">— Select Group —</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
             </select>
             {errors.group_id && <p className="text-xs text-red-500 mt-1">{errors.group_id}</p>}
           </FormField>

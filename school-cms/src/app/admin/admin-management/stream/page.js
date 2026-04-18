@@ -178,7 +178,7 @@ export default function StreamPage() {
           >
             <option value="">— Select Group —</option>
             {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+              <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>
             ))}
           </select>
           {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}

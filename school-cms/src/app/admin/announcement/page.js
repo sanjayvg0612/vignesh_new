@@ -5,9 +5,12 @@ import { PageHeader, SearchBar, Table, Pagination, Modal, FormField } from '@/co
 import { announcementApi, groupApi, streamApi, classApi, sectionApi } from '@/lib/api'
 
 const PER_PAGE = 10
-const PRIORITIES = ['High', 'Normal', 'Low']
+const CATEGORIES = ['EXAMS', 'EVENTS', 'CAMPUS', 'GENERAL']
 
-const EMPTY_FORM = { title: '', content: '', priority: 'Normal', date: '', group_id: '', stream_id: '', class_id: '', section_id: '' }
+const EMPTY_FORM = {
+  title: '', description: '', url: '', category: '',
+  school_group_id: '', school_stream_id: '', class_id: '', section_id: '',
+}
 
 export default function AnnouncementPage() {
   const [data, setData]       = useState([])
@@ -26,9 +29,9 @@ export default function AnnouncementPage() {
   const [fileName, setFileName] = useState('')
 
   // Cascade dropdowns
-  const [groups, setGroups]   = useState([])
-  const [streams, setStreams]  = useState([])
-  const [classes, setClasses]  = useState([])
+  const [groups, setGroups]     = useState([])
+  const [streams, setStreams]   = useState([])
+  const [classes, setClasses]   = useState([])
   const [sections, setSections] = useState([])
   const [streamLoading, setStreamLoading]   = useState(false)
   const [classLoading, setClassLoading]     = useState(false)
@@ -58,11 +61,10 @@ export default function AnnouncementPage() {
   }, [])
 
   const handleGroupChange = async (id) => {
-    setForm(f => ({ ...f, group_id: id, stream_id: '', class_id: '', section_id: '' }))
+    setForm(f => ({ ...f, school_group_id: id, school_stream_id: '', class_id: '', section_id: '' }))
     setStreams([]); setClasses([]); setSections([])
-    if (formErrors.group_id) setFormErrors(p => ({ ...p, group_id: '' }))
+    if (formErrors.school_group_id) setFormErrors(p => ({ ...p, school_group_id: '' }))
     if (!id) return
-    // Load streams and classes in parallel
     setStreamLoading(true); setClassLoading(true)
     try {
       const [streamRes, classRes] = await Promise.all([
@@ -70,19 +72,17 @@ export default function AnnouncementPage() {
         classApi.dropdown({ school_group_id: id }),
       ])
       setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
-      setClasses(Array.isArray(classRes.result) ? classRes.result : [])
-    } catch {
-      setStreams([]); setClasses([])
-    } finally { setStreamLoading(false); setClassLoading(false) }
+      setClasses(Array.isArray(classRes.result)  ? classRes.result  : [])
+    } catch { setStreams([]); setClasses([]) }
+    finally { setStreamLoading(false); setClassLoading(false) }
   }
 
   const handleStreamChange = async (id) => {
-    setForm(f => ({ ...f, stream_id: id, class_id: '', section_id: '' }))
+    setForm(f => ({ ...f, school_stream_id: id, class_id: '', section_id: '' }))
     setClasses([]); setSections([])
-    // Reload classes filtered by stream (or all for group if stream cleared)
     setClassLoading(true)
     try {
-      const params = { school_group_id: form.group_id }
+      const params = { school_group_id: form.school_group_id }
       if (id) params.stream_id = id
       const res = await classApi.dropdown(params)
       setClasses(Array.isArray(res.result) ? res.result : [])
@@ -116,47 +116,59 @@ export default function AnnouncementPage() {
   const openEdit = async (a) => {
     setEditing(a); setFormErrors({})
     setFile(null); setFileName('')
-    setForm({
-      title:     a.title     || '',
-      content:   a.content   || '',
-      priority:  a.priority  || 'Normal',
-      date:      a.date      ? a.date.split('T')[0] : '',
-      group_id:  a.group_id  ? String(a.group_id)  : '',
-      stream_id: a.stream_id ? String(a.stream_id) : '',
-      class_id:  a.class_id  ? String(a.class_id)  : '',
-      section_id:a.section_id? String(a.section_id): '',
-    })
     resetDropdowns()
-    // Load cascade data for existing values
-    if (a.group_id) {
-      setStreamLoading(true)
-      streamApi.dropdown({ school_group_id: a.group_id })
-        .then(r => setStreams(Array.isArray(r.result) ? r.result : []))
-        .catch(() => setStreams([]))
-        .finally(() => setStreamLoading(false))
-    }
-    if (a.stream_id && a.group_id) {
-      setClassLoading(true)
-      classApi.dropdown({ school_group_id: a.group_id, stream_id: a.stream_id })
-        .then(r => setClasses(Array.isArray(r.result) ? r.result : []))
-        .catch(() => setClasses([]))
-        .finally(() => setClassLoading(false))
-    }
-    if (a.class_id) {
-      setSectionLoading(true)
-      sectionApi.dropdown({ class_id: a.class_id })
-        .then(r => setSections(Array.isArray(r.result) ? r.result : []))
-        .catch(() => setSections([]))
-        .finally(() => setSectionLoading(false))
-    }
     setModal(true)
+
+    // Fetch full record to get all IDs
+    let full = a
+    try {
+      const res = await announcementApi.getById(a.id ?? a.announcement_id)
+      full = res.result || a
+    } catch { /* fall back to list row */ }
+
+    const groupId   = full.school_group_id  || full.group_id  || a.school_group_id  || a.group_id
+    const streamId  = full.school_stream_id || full.stream_id || a.school_stream_id || a.stream_id
+    const classId   = full.class_id   || a.class_id
+    const sectionId = full.section_id || a.section_id
+
+    setForm({
+      title:           full.title       || a.title       || '',
+      description:     full.description || a.description || a.content || '',
+      url:             full.url         || a.url         || '',
+      category:        full.category    || a.category    || '',
+      school_group_id:  groupId   ? String(groupId)   : '',
+      school_stream_id: streamId  ? String(streamId)  : '',
+      class_id:         classId   ? String(classId)   : '',
+      section_id:       sectionId ? String(sectionId) : '',
+    })
+
+    if (groupId) {
+      setStreamLoading(true); setClassLoading(true)
+      try {
+        const [streamRes, classRes] = await Promise.all([
+          streamApi.dropdown({ school_group_id: groupId }),
+          classApi.dropdown({ school_group_id: groupId }),
+        ])
+        setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
+        setClasses(Array.isArray(classRes.result)  ? classRes.result  : [])
+      } catch { setStreams([]); setClasses([]) }
+      finally { setStreamLoading(false); setClassLoading(false) }
+    }
+    if (classId) {
+      setSectionLoading(true)
+      try {
+        const secRes = await sectionApi.dropdown({ class_id: classId })
+        setSections(Array.isArray(secRes.result) ? secRes.result : [])
+      } catch { setSections([]) }
+      finally { setSectionLoading(false) }
+    }
   }
 
   const validate = () => {
     const ve = {}
-    if (!form.title.trim()) ve.title    = 'Title is required'
-    if (!form.group_id)     ve.group_id = 'Group is required'
-    if (!form.class_id)     ve.class_id = 'Class is required'
+    if (!form.title.trim())        ve.title           = 'Title is required'
+    if (!form.school_group_id)     ve.school_group_id = 'Group is required'
+    if (!form.class_id)            ve.class_id        = 'Class is required'
     return ve
   }
 
@@ -166,14 +178,14 @@ export default function AnnouncementPage() {
     setSaving(true)
     try {
       const payload = {
-        title:      form.title,
-        content:    form.content   || undefined,
-        priority:   form.priority,
-        date:       form.date      || undefined,
-        group_id:   Number(form.group_id),
-        stream_id:  Number(form.stream_id),
-        class_id:   Number(form.class_id),
-        section_id: Number(form.section_id),
+        title:            form.title,
+        description:      form.description  || undefined,
+        url:              form.url          || undefined,
+        category:         form.category     || undefined,
+        school_group_id:  Number(form.school_group_id),
+        school_stream_id: form.school_stream_id ? Number(form.school_stream_id) : undefined,
+        class_id:         Number(form.class_id),
+        section_id:       form.section_id ? Number(form.section_id) : undefined,
       }
       if (editing) {
         await announcementApi.update(editing.id ?? editing.announcement_id, payload, file || undefined)
@@ -202,11 +214,16 @@ export default function AnnouncementPage() {
     setFile(f); setFileName(f.name)
   }
 
-  const priorityColor = { High: 'bg-red-100 text-red-700', Normal: 'bg-blue-100 text-blue-700', Low: 'bg-gray-100 text-gray-600' }
-
   const formatDate = (d) => {
     if (!d) return '—'
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  const categoryColor = {
+    EXAMS:   'bg-red-100 text-red-700',
+    EVENTS:  'bg-blue-100 text-blue-700',
+    CAMPUS:  'bg-purple-100 text-purple-700',
+    GENERAL: 'bg-gray-100 text-gray-600',
   }
 
   return (
@@ -229,20 +246,22 @@ export default function AnnouncementPage() {
           <span className="text-sm text-gray-500 ml-auto">{total} records</span>
         </div>
 
-        <Table headers={['Sl No.', 'Title', 'Content', 'Priority', 'Date', 'File', 'Actions']} empty={!loading && data.length === 0}>
+        <Table headers={['Sl No.', 'Title', 'Category', 'Description', 'Date', 'File', 'Actions']} empty={!loading && data.length === 0}>
           {loading ? (
             <tr><td colSpan={7} className="table-td text-center text-gray-400 py-8">Loading...</td></tr>
           ) : data.map((a, i) => (
             <tr key={a.id ?? a.announcement_id ?? i} className="hover:bg-gray-50 transition-colors">
               <td className="table-td text-gray-400">{(page - 1) * PER_PAGE + i + 1}</td>
               <td className="table-td font-semibold text-gray-900">{a.title || '—'}</td>
-              <td className="table-td text-gray-500 max-w-xs truncate">{a.content || '—'}</td>
               <td className="table-td">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${priorityColor[a.priority] || 'bg-gray-100 text-gray-600'}`}>
-                  {a.priority || '—'}
-                </span>
+                {a.category ? (
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColor[a.category] || 'bg-gray-100 text-gray-600'}`}>
+                    {a.category}
+                  </span>
+                ) : '—'}
               </td>
-              <td className="table-td whitespace-nowrap text-gray-600">{formatDate(a.date)}</td>
+              <td className="table-td text-gray-500 max-w-xs truncate">{a.description || a.content || '—'}</td>
+              <td className="table-td whitespace-nowrap text-gray-600">{formatDate(a.date || a.created_at)}</td>
               <td className="table-td">
                 {(a.id ?? a.announcement_id) ? (
                   <a href={announcementApi.fileUrl(a.id ?? a.announcement_id)} target="_blank" rel="noreferrer"
@@ -280,30 +299,29 @@ export default function AnnouncementPage() {
           {/* Group */}
           <FormField label="Group" required>
             <select
-              className={`input ${formErrors.group_id ? 'border-red-400' : ''}`}
-              value={form.group_id}
+              className={`input ${formErrors.school_group_id ? 'border-red-400' : ''}`}
+              value={form.school_group_id}
               onChange={e => handleGroupChange(e.target.value)}
             >
               <option value="">— Select Group —</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
             </select>
-            {formErrors.group_id && <p className="text-xs text-red-500 mt-1">{formErrors.group_id}</p>}
+            {formErrors.school_group_id && <p className="text-xs text-red-500 mt-1">{formErrors.school_group_id}</p>}
           </FormField>
 
           {/* Stream */}
           <FormField label="Stream">
             <select
-              className={`input ${formErrors.stream_id ? 'border-red-400' : ''}`}
-              value={form.stream_id}
+              className="input"
+              value={form.school_stream_id}
               onChange={e => handleStreamChange(e.target.value)}
-              disabled={streamLoading || !form.group_id}
+              disabled={streamLoading || !form.school_group_id}
             >
               <option value="">
-                {streamLoading ? 'Loading...' : !form.group_id ? '— Select Group first —' : streams.length === 0 ? 'No streams available' : '— Select Stream —'}
+                {streamLoading ? 'Loading...' : !form.school_group_id ? '— Select Group first —' : streams.length === 0 ? 'No streams available' : '— Select Stream (optional) —'}
               </option>
-              {streams.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {streams.map(s => <option key={s.school_stream_id ?? s.id} value={s.school_stream_id ?? s.id}>{s.stream_name || s.name}</option>)}
             </select>
-            {formErrors.stream_id && <p className="text-xs text-red-500 mt-1">{formErrors.stream_id}</p>}
           </FormField>
 
           {/* Class */}
@@ -312,10 +330,10 @@ export default function AnnouncementPage() {
               className={`input ${formErrors.class_id ? 'border-red-400' : ''}`}
               value={form.class_id}
               onChange={e => handleClassChange(e.target.value)}
-              disabled={classLoading || !form.group_id}
+              disabled={classLoading || !form.school_group_id}
             >
               <option value="">
-                {classLoading ? 'Loading...' : !form.group_id ? '— Select Group first —' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
+                {classLoading ? 'Loading...' : !form.school_group_id ? '— Select Group first —' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
               </option>
               {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
             </select>
@@ -325,17 +343,16 @@ export default function AnnouncementPage() {
           {/* Section */}
           <FormField label="Section">
             <select
-              className={`input ${formErrors.section_id ? 'border-red-400' : ''}`}
+              className="input"
               value={form.section_id}
-              onChange={e => { setForm(f => ({ ...f, section_id: e.target.value })); if (formErrors.section_id) setFormErrors(p => ({ ...p, section_id: '' })) }}
+              onChange={e => setForm(f => ({ ...f, section_id: e.target.value }))}
               disabled={sectionLoading || !form.class_id}
             >
               <option value="">
-                {sectionLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : sections.length === 0 ? 'No sections available' : '— Select Section —'}
+                {sectionLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : sections.length === 0 ? 'No sections available' : '— Select Section (optional) —'}
               </option>
               {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_code}</option>)}
             </select>
-            {formErrors.section_id && <p className="text-xs text-red-500 mt-1">{formErrors.section_id}</p>}
           </FormField>
 
           <hr className="border-gray-100" />
@@ -351,28 +368,34 @@ export default function AnnouncementPage() {
             {formErrors.title && <p className="text-xs text-red-500 mt-1">{formErrors.title}</p>}
           </FormField>
 
-          {/* Content */}
-          <FormField label="Content">
+          {/* Category */}
+          <FormField label="Category">
+            <select className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+              <option value="">— Select Category —</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </FormField>
+
+          {/* Description */}
+          <FormField label="Description">
             <textarea
               className="input resize-none"
               rows={3}
-              placeholder="Write announcement content..."
-              value={form.content}
-              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+              placeholder="Write announcement description..."
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             />
           </FormField>
 
-          {/* Priority + Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Priority">
-              <select className="input" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
-                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </FormField>
-            <FormField label="Date">
-              <input type="date" className="input" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-            </FormField>
-          </div>
+          {/* URL */}
+          <FormField label="URL">
+            <input
+              className="input"
+              placeholder="https://..."
+              value={form.url}
+              onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+            />
+          </FormField>
 
           {/* File */}
           <FormField label="Attachment (optional)">

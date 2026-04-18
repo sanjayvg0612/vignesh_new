@@ -210,7 +210,7 @@ export default function EnquiryPage() {
         <FormField label="Class">
           <select className="input" value={form.class_id} onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}>
             <option value="">— Select Class (optional) —</option>
-            {classes.map(c => <option key={c.class_id} value={c.class_code}>{c.class_code} {c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
           </select>
         </FormField>
         <FormField label="Guardian Name">

@@ -52,10 +52,11 @@ export default function ClassPage() {
 
   const openModal = async (cls = null) => {
     setEditing(cls)
+    const groupId = cls ? String(cls.school_group_id || cls.group_id || '') : ''
     setForm(cls ? {
       class_name:       cls.class_name       || '',
       class_code:       cls.class_code,
-      school_group_id:  String(cls.id),
+      school_group_id:  groupId,
       school_stream_id: cls.school_stream_id ? String(cls.school_stream_id) : '',
       status:           toUiStatus(cls.status),
     } : { class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active' })
@@ -63,8 +64,16 @@ export default function ClassPage() {
     setStreams([])
     try {
       const groupRes = await groupApi.dropdown()
-      setGroups(groupRes.result || [])
+      setGroups(Array.isArray(groupRes.result) ? groupRes.result : [])
     } catch { setGroups([]) }
+    // Edit mode: load streams for existing group
+    if (groupId) {
+      setStreamLoading(true)
+      try {
+        const streamRes = await streamApi.dropdown({ school_group_id: groupId })
+        setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
+      } catch { setStreams([]) } finally { setStreamLoading(false) }
+    }
     setModal(true)
   }
 
@@ -198,7 +207,7 @@ export default function ClassPage() {
           >
             <option value="">— Select Group —</option>
             {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+              <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>
             ))}
           </select>
           {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}

@@ -94,12 +94,12 @@ const NAV = [
   ]},
 ]
 
-function NavItem({ item }) {
+function NavItem({ item, openLabel, setOpenLabel }) {
   const pathname = usePathname()
   const isActive = item.href && pathname === item.href
   const hasChildren = !!item.children?.length
   const isGroupActive = hasChildren && item.children.some(c => pathname === c.href || pathname.startsWith(c.href + '/'))
-  const [open, setOpen] = useState(isGroupActive)
+  const open = openLabel === item.label
   const Icon = item.icon
 
   if (!hasChildren) {
@@ -110,15 +110,17 @@ function NavItem({ item }) {
     )
   }
 
+  const toggle = () => setOpenLabel(open ? null : item.label)
+
   return (
     <div>
-      <button onClick={() => setOpen(!open)} className={clsx('sidebar-link justify-between', isGroupActive && 'text-primary-700')}>
+      <button onClick={toggle} className={clsx('sidebar-link justify-between', isGroupActive && 'text-primary-700')}>
         <span className="flex items-center gap-3"><Icon className="w-4 h-4 shrink-0" />{item.label}</span>
         {open ? <ChevronDown className="w-3.5 h-3.5"/> : <ChevronRight className="w-3.5 h-3.5"/>}
       </button>
       {open && (
         <div className="mt-0.5 space-y-0.5">
-          {item.children.map(c => <NavItem key={c.href} item={c} />)}
+          {item.children.map(c => <NavItem key={c.href} item={c} openLabel={openLabel} setOpenLabel={setOpenLabel} />)}
         </div>
       )}
     </div>
@@ -126,8 +128,16 @@ function NavItem({ item }) {
 }
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
+  const pathname = usePathname()
   const router = useRouter()
   const logout = () => router.push('/login')
+
+  // Find which menu is active on initial load
+  const initialOpen = NAV.find(item =>
+    item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + '/'))
+  )?.label ?? null
+
+  const [openLabel, setOpenLabel] = useState(initialOpen)
 
   return (
     <>
@@ -152,7 +162,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          {NAV.map((item, i) => <NavItem key={item.href || item.label + i} item={item} />)}
+          {NAV.map((item, i) => <NavItem key={item.href || item.label + i} item={item} openLabel={openLabel} setOpenLabel={setOpenLabel} />)}
         </nav>
 
         {/* User */}

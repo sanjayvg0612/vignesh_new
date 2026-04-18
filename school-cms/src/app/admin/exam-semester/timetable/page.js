@@ -225,7 +225,7 @@ export default function ExamTimetablePage() {
           <FormField label="Group" required>
             <select className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_group_id} onChange={f('school_group_id')}>
               <option value="">— Select Group —</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
             </select>
             {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
           </FormField>

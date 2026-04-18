@@ -49,6 +49,7 @@ export default function ClassTeacherPage() {
             class_code:   g.class_code,
             section_id:   g.section_id,
             section_code: g.section_code,
+            group_id:     g.school_group_id || g.group_id || '',
           })
         }
       })
@@ -68,7 +69,7 @@ export default function ClassTeacherPage() {
     setClasses([])
     setSections([])
     setForm(item ? {
-      group_id:   '',
+      group_id:   String(item.group_id   || ''),
       class_id:   String(item.class_id   || ''),
       section_id: String(item.section_id || ''),
       role_id:    '',
@@ -82,18 +83,18 @@ export default function ClassTeacherPage() {
         roleApi.dropdown(),
         employeeApi.dropdown(),
       ])
-      setGroups(Array.isArray(groupRes.result)    ? groupRes.result    : [])
-      setRoles(Array.isArray(roleRes.result)      ? roleRes.result     : [])
-      setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result : [])
+      setGroups(Array.isArray(groupRes.result)     ? groupRes.result    : [])
+      setRoles(Array.isArray(roleRes.result)       ? roleRes.result     : [])
+      setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result  : [])
     } catch { setGroups([]); setRoles([]); setTeachers([]) }
 
-    // Edit mode: load classes and sections for the existing values
+    // Edit mode: load classes and sections for existing values
     if (item?.class_id) {
       setClassLoading(true)
       setSectionLoading(true)
       try {
         const [classRes, secRes] = await Promise.all([
-          classApi.dropdown(),
+          classApi.dropdown({ school_group_id: item.group_id || undefined }),
           sectionApi.dropdown({ class_id: item.class_id }),
         ])
         setClasses(Array.isArray(classRes.result) ? classRes.result : [])
@@ -233,7 +234,7 @@ export default function ClassTeacherPage() {
             onChange={e => handleGroupChange(e.target.value)}
           >
             <option value="">— Select Group —</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
           </select>
           {errors.group_id && <p className="text-xs text-red-500 mt-1">{errors.group_id}</p>}
         </FormField>
@@ -244,10 +245,10 @@ export default function ClassTeacherPage() {
             className={`input ${errors.class_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.class_id}
             onChange={e => handleClassChange(e.target.value)}
-            disabled={classLoading || !form.group_id || classes.length === 0}
+            disabled={classLoading || classes.length === 0}
           >
             <option value="">
-              {classLoading ? 'Loading...' : !form.group_id ? '— Select Group first —' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
+              {classLoading ? 'Loading...' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
             </option>
             {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
           </select>

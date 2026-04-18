@@ -97,16 +97,22 @@ export default function DashboardPage() {
         setBirthdays(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [])
       }
     }).finally(() => setLoading(false))
+
+    groupApi.dropdown().then(r => {
+      const raw = r.result
+      setGroups(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [])
+    }).catch(() => setGroups([]))
   }, [])
 
-  const loadTab = useCallback(async (tab) => {
+  const loadTab = useCallback(async (tab, groupId) => {
     setAttendanceLoading(true)
     try {
+      const params = groupId ? { school_group_id: groupId } : {}
       if (tab === 'student') {
-        const res = await dashboardApi.studentAttendanceToday()
+        const res = await dashboardApi.studentAttendanceToday(params)
         setStudentData(parseCountResponse(res))
       } else {
-        const res = await dashboardApi.employeeAttendanceToday()
+        const res = await dashboardApi.employeeAttendanceToday(params)
         setTeacherData(parseCountResponse(res))
       }
     } catch {
@@ -118,12 +124,19 @@ export default function DashboardPage() {
   }, [])
 
   // Load student tab on mount
-  useEffect(() => { loadTab('student') }, [loadTab])
+  useEffect(() => { loadTab('student', '') }, [loadTab])
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)
-    if (tab === 'student' && studentData === null) loadTab('student')
-    if (tab === 'teacher' && teacherData === null) loadTab('teacher')
+    if (tab === 'student') loadTab('student', selectedGroup)
+    if (tab === 'teacher') loadTab('teacher', selectedGroup)
+  }
+
+  const handleGroupChange = (id) => {
+    setSelectedGroup(id)
+    setStudentData(null)
+    setTeacherData(null)
+    loadTab(activeTab, id)
   }
 
   const stat = (key, fallback = 0) => {
@@ -156,25 +169,36 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 card p-5">
           <div className="flex items-center gap-3 mb-5">
             <h2 className="font-semibold text-gray-900" style={{ fontFamily: 'Outfit' }}>Attendance</h2>
-            {/* Tabs */}
-            <div className="ml-auto flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
-              {[
-                { key: 'student', label: 'Student' },
-                { key: 'teacher', label: 'Teacher' },
-              ].map(t => (
-                <button
-                  key={t.key}
-                  onClick={() => handleTabChange(t.key)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    activeTab === t.key
-                      ? 'bg-white text-primary-700 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+            {/* Tabs — centered */}
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                {[
+                  { key: 'student', label: 'Student' },
+                  { key: 'teacher', label: 'Teacher' },
+                ].map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => handleTabChange(t.key)}
+                    className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
+                      activeTab === t.key
+                        ? 'bg-white text-primary-700 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            {/* Group filter — right */}
+            <select
+              className="input w-32 text-sm py-1.5"
+              value={selectedGroup}
+              onChange={e => handleGroupChange(e.target.value)}
+            >
+              <option value="">All Groups</option>
+              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
+            </select>
           </div>
 
           {attendanceLoading ? (
@@ -245,21 +269,43 @@ export default function DashboardPage() {
           ) : birthdays.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">No birthdays today</p>
           ) : (
-            <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <ul className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {birthdays.map((b, i) => (
-                <li key={b.student_id ?? i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-pink-50">
-                  <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-pink-600">
+                <li key={b.student_id ?? i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-pink-50 border border-transparent hover:border-pink-100 transition-colors">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-pink-600">
                       {(b.first_name || b.student_name || '?')[0].toUpperCase()}
                     </span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                  <div className="min-w-0 flex-1">
+                    {/* Name */}
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {[b.first_name, b.last_name].filter(Boolean).join(' ') || b.student_name || `Student #${b.student_id}`}
                     </p>
-                    <p className="text-xs text-gray-400">{b.class_code || ''}{b.section_code ? ` · ${b.section_code}` : ''}</p>
+                    {/* Class + Age */}
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {b.class_code && (
+                        <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Class {b.class_code}</span>
+                      )}
+                      {b.age && (
+                        <span className="text-xs bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-medium">{b.age} yrs</span>
+                      )}
+                      {b.gender && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded capitalize">{b.gender}</span>
+                      )}
+                    </div>
+                    {/* DOB + Phone */}
+                    <div className="flex items-center gap-3 mt-1">
+                      {b.dob && (
+                        <p className="text-xs text-gray-400">🎂 {new Date(b.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                      )}
+                      {b.phone && (
+                        <p className="text-xs text-gray-400">📞 {b.phone}</p>
+                      )}
+                    </div>
                   </div>
-                  <Cake className="w-4 h-4 text-pink-400 shrink-0 ml-auto" />
+                  <Cake className="w-4 h-4 text-pink-400 shrink-0 mt-1" />
                 </li>
               ))}
             </ul>

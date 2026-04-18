@@ -214,29 +214,61 @@ export default function StudentDiaryPage() {
   const openEdit = async (d) => {
     setEditing(d)
     setFormErrors({})
-    setSelectedStudent(d.student_id ? { student_id: d.student_id, first_name: d.student_name || d.first_name || '', last_name: d.last_name || '', student_roll_id: d.student_roll_id } : null)
+    setSelectedStudent(null)
     setStudentSearch('')
-    setForm({
-      student_id: d.student_id  || '',
-      class_id:   d.class_id    ? String(d.class_id)   : '',
-      section_id: d.section_id  ? String(d.section_id) : '',
-      subject_id: d.subject_id  ? String(d.subject_id) : '',
-      task_title: d.task_title  || '',
-      dairy_date: d.dairy_date  ? d.dairy_date.split('T')[0] : '',
-      status:     d.status      || 'pending',
-    })
-    // Load classes and cascading data
-    classApi.dropdown().then(r => setFormClasses(Array.isArray(r.result) ? r.result : [])).catch(() => setFormClasses([]))
-    if (d.class_id) {
-      setFormSectionLoading(true)
-      sectionApi.dropdown({ class_id: d.class_id }).then(r => setFormSections(Array.isArray(r.result) ? r.result : [])).catch(() => setFormSections([])).finally(() => setFormSectionLoading(false))
-      setFormSubjectLoading(true)
-      subjectApi.dropdown({ class_id: d.class_id }).then(r => setFormSubjects(Array.isArray(r.result) ? r.result : [])).catch(() => setFormSubjects([])).finally(() => setFormSubjectLoading(false))
-    } else {
-      setFormSections([])
-      setFormSubjects([])
-    }
+    setFormSections([])
+    setFormSubjects([])
+    setForm({ student_id: '', class_id: '', section_id: '', subject_id: '', task_title: '', dairy_date: '', status: 'pending' })
     setModal(true)
+
+    // Fetch full record to get all IDs
+    let full = d
+    try {
+      const res = await diaryApi.getById(d.id)
+      full = res.result || d
+    } catch { /* fall back to list row */ }
+
+    const classId   = full.class_id   || d.class_id
+    const sectionId = full.section_id || d.section_id
+    const subjectId = full.subject_id || d.subject_id
+
+    setSelectedStudent(full.student_id ? {
+      student_id:      full.student_id,
+      first_name:      full.student_name || full.first_name || d.student_name || '',
+      last_name:       full.last_name    || d.last_name     || '',
+      student_roll_id: full.student_roll_id || d.student_roll_id,
+    } : null)
+
+    setForm({
+      student_id: full.student_id  || d.student_id  || '',
+      class_id:   classId   ? String(classId)   : '',
+      section_id: sectionId ? String(sectionId) : '',
+      subject_id: subjectId ? String(subjectId) : '',
+      task_title: full.task_title  || d.task_title  || '',
+      dairy_date: (full.dairy_date || d.dairy_date) ? (full.dairy_date || d.dairy_date).split('T')[0] : '',
+      status:     full.status      || d.status      || 'pending',
+    })
+
+    // Load classes and cascading dropdowns
+    classApi.dropdown().then(r => setFormClasses(Array.isArray(r.result) ? r.result : [])).catch(() => setFormClasses([]))
+    if (classId) {
+      setFormSectionLoading(true)
+      setFormSubjectLoading(true)
+      try {
+        const [secRes, subRes] = await Promise.all([
+          sectionApi.dropdown({ class_id: classId }),
+          subjectApi.dropdown({ class_id: classId }),
+        ])
+        setFormSections(Array.isArray(secRes.result) ? secRes.result : [])
+        setFormSubjects(Array.isArray(subRes.result) ? subRes.result : [])
+      } catch {
+        setFormSections([])
+        setFormSubjects([])
+      } finally {
+        setFormSectionLoading(false)
+        setFormSubjectLoading(false)
+      }
+    }
   }
 
   const validate = () => {
@@ -340,7 +372,7 @@ export default function StudentDiaryPage() {
             <option value="">
               {filterSubjectLoading ? 'Loading...' : !filterClass ? 'All Subjects' : filterSubjects.length === 0 ? 'No Subjects' : 'All Subjects'}
             </option>
-            {filterSubjects.map(s => <option key={s.subject_id} value={s.subject_id}>{s.subject_name || s.subject_code}</option>)}
+            {filterSubjects.map(s => <option key={s.id ?? s.subject_id} value={s.id ?? s.subject_id}>{s.name || s.subject_name || s.subject_code}</option>)}
           </select>
           <input type="date" className="input w-40" value={filterDate} onChange={e => { setFilterDate(e.target.value); setPage(1) }} />
           <select className="input w-36" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1) }}>
@@ -503,7 +535,7 @@ export default function StudentDiaryPage() {
             <option value="">
               {formSubjectLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : formSubjects.length === 0 ? 'No subjects' : '— Select Subject —'}
             </option>
-            {formSubjects.map(s => <option key={s.id} value={s.id}>{s.name || s.subject_code}</option>)}
+            {formSubjects.map(s => <option key={s.id ?? s.subject_id} value={s.id ?? s.subject_id}>{s.name || s.subject_name || s.subject_code}</option>)}
           </select>
         </FormField>
 

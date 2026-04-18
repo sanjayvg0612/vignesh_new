@@ -4,10 +4,11 @@ import { PageHeader, Table, Pagination } from '@/components/ui'
 import { studentAttendanceApi, classApi, sectionApi } from '@/lib/api'
 
 const PER_PAGE = 20
-const STATUS_LABEL = { P: 'Present', A: 'Absent' }
+const STATUS_LABEL = { P: 'Present', A: 'Absent', L: 'Leave' }
 const STATUS_COLOR = {
   P: 'bg-green-100 text-green-700 border-green-300',
   A: 'bg-red-100 text-red-600 border-red-300',
+  L: 'bg-yellow-100 text-yellow-700 border-yellow-300',
 }
 
 export default function ViewAttendancePage() {
@@ -63,6 +64,7 @@ export default function ViewAttendancePage() {
 
   const present = data.filter(r => r.status === 'P').length
   const absent  = data.filter(r => r.status === 'A').length
+  const leave   = data.filter(r => r.status === 'L').length
   const pct     = data.length ? Math.round((present / data.length) * 100) : 0
 
   return (
@@ -77,7 +79,7 @@ export default function ViewAttendancePage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Class</label>
           <select className="input w-36" value={classId} onChange={e => { setClassId(e.target.value); setPage(1) }}>
             <option value="">— All Classes —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code} {c.stream_name && ` - ${c.stream_name}`}</option>)}
           </select>
         </div>
         <div>
@@ -97,18 +99,20 @@ export default function ViewAttendancePage() {
             <option value="">— All —</option>
             <option value="P">Present</option>
             <option value="A">Absent</option>
+            <option value="L">Leave</option>
           </select>
         </div>
       </div>
 
       {/* Summary cards */}
       {data.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
-            { l: 'Total Records',  v: total,    c: 'text-gray-900'    },
-            { l: 'Present',        v: present,  c: 'text-green-600'   },
-            { l: 'Absent',         v: absent,   c: 'text-red-500'     },
-            { l: 'Attendance %',   v: `${pct}%`,c: 'text-primary-700' },
+            { l: 'Total Records',  v: total,    c: 'text-gray-900'     },
+            { l: 'Present',        v: present,  c: 'text-green-600'    },
+            { l: 'Absent',         v: absent,   c: 'text-red-500'      },
+            { l: 'Leave',          v: leave,    c: 'text-yellow-600'   },
+            { l: 'Attendance %',   v: `${pct}%`,c: 'text-primary-700'  },
           ].map(i => (
             <div key={i.l} className="card p-4 text-center">
               <p className={`text-2xl font-bold ${i.c}`} style={{fontFamily:'Outfit'}}>{i.v}</p>

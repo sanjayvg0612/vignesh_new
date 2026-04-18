@@ -82,7 +82,7 @@ export default function PromotePage() {
               onChange={e => { setClassId(e.target.value); if(classError) setClassError('') }}
             >
               <option value="">— Select the class to promote from —</option>
-              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
             </select>
             {classError && <p className="text-xs text-red-500 mt-1">{classError}</p>}
           </FormField>

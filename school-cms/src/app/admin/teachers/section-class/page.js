@@ -223,7 +223,7 @@ export default function SectionClassTeacherPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Group <span className="text-red-500">*</span></label>
           <select className="input w-36" value={groupId} onChange={e => handleGroupChange(e.target.value)}>
             <option value="">— Select —</option>
-            {filterGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {filterGroups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
           </select>
         </div>
         <div>

@@ -2,11 +2,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, ImageIcon } from 'lucide-react'
 import { PageHeader, SearchBar, Table, Pagination, Modal, FormField } from '@/components/ui'
-import { notificationApi } from '@/lib/api'
+import { notificationApi, roleApi } from '@/lib/api'
 
 const PER_PAGE = 10
-const NOTIF_TYPES  = ['Info', 'Warning', 'Alert', 'Success']
-const SEND_TO_OPTS = ['All', 'Students', 'Parents', 'Teachers', 'Staff']
 
 export default function NotificationPage() {
   const [data, setData]       = useState([])
@@ -20,9 +18,11 @@ export default function NotificationPage() {
   const [editing, setEditing] = useState(null)
   const [saving, setSaving]   = useState(false)
   const [formErrors, setFormErrors] = useState({})
-  const [form, setForm]       = useState({ title: '', message: '', type: 'Info', sent_to: 'All' })
+  const [form, setForm]       = useState({ title: '', message: '', role_id: '' })
   const [image, setImage]     = useState(null)
   const [imagePreview, setImagePreview] = useState('')
+
+  const [roles, setRoles]     = useState([])
 
   const [deleteId, setDeleteId]       = useState(null)
   const [deleting, setDeleting]       = useState(false)
@@ -31,45 +31,50 @@ export default function NotificationPage() {
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   const fetchNotifications = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       const res    = await notificationApi.list({ page, limit: PER_PAGE, search: search || undefined })
       const result = res.result || {}
       setData(result.data   || [])
       setTotal(result.total || 0)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
   }, [page, search])
 
   useEffect(() => { fetchNotifications() }, [fetchNotifications])
 
+  // Load roles once
+  useEffect(() => {
+    roleApi.dropdown()
+      .then(r => setRoles(Array.isArray(r.result) ? r.result : []))
+      .catch(() => setRoles([]))
+  }, [])
+
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
   const openAdd = () => {
-    setEditing(null)
-    setFormErrors({})
-    setImage(null)
-    setImagePreview('')
-    setForm({ title: '', message: '', type: 'Info', sent_to: 'All' })
+    setEditing(null); setFormErrors({})
+    setImage(null); setImagePreview('')
+    setForm({ title: '', message: '', role_id: '' })
     setModal(true)
   }
 
-  const openEdit = (n) => {
-    setEditing(n)
-    setFormErrors({})
-    setImage(null)
-    setImagePreview('')
-    setForm({
-      title:   n.title   || '',
-      message: n.message || '',
-      type:    n.type    || 'Info',
-      sent_to: n.sent_to || 'All',
-    })
+  const openEdit = async (n) => {
+    setEditing(n); setFormErrors({})
+    setImage(null); setImagePreview('')
     setModal(true)
+
+    let full = n
+    try {
+      const res = await notificationApi.getById(n.id ?? n.notification_id)
+      full = res.result || n
+    } catch { /* fall back */ }
+
+    setForm({
+      title:   full.title   || n.title   || '',
+      message: full.message || n.message || '',
+      role_id: full.role_id ? String(full.role_id) : (n.role_id ? String(n.role_id) : ''),
+    })
   }
 
   const validate = () => {
@@ -85,22 +90,17 @@ export default function NotificationPage() {
     try {
       const payload = {
         title:   form.title,
-        message: form.message  || undefined,
-        type:    form.type,
-        sent_to: form.sent_to,
+        message: form.message || undefined,
+        role_id: form.role_id ? Number(form.role_id) : undefined,
       }
       if (editing) {
         await notificationApi.update(editing.id ?? editing.notification_id, payload, image || undefined)
       } else {
         await notificationApi.create(payload, image || undefined)
       }
-      setModal(false)
-      fetchNotifications()
-    } catch (e) {
-      alert(e.message)
-    } finally {
-      setSaving(false)
-    }
+      setModal(false); fetchNotifications()
+    } catch (e) { alert(e.message) }
+    finally { setSaving(false) }
   }
 
   const confirmDelete = (id) => { setDeleteId(id); setConfirmOpen(true) }
@@ -109,13 +109,9 @@ export default function NotificationPage() {
     setDeleting(true)
     try {
       await notificationApi.delete(deleteId)
-      setConfirmOpen(false)
-      fetchNotifications()
-    } catch (e) {
-      alert(e.message)
-    } finally {
-      setDeleting(false)
-    }
+      setConfirmOpen(false); fetchNotifications()
+    } catch (e) { alert(e.message) }
+    finally { setDeleting(false) }
   }
 
   const handleImageChange = (e) => {
@@ -125,18 +121,11 @@ export default function NotificationPage() {
     setImagePreview(URL.createObjectURL(f))
   }
 
-  const typeColor = {
-    Info:    'bg-blue-100 text-blue-700',
-    Warning: 'bg-yellow-100 text-yellow-700',
-    Alert:   'bg-red-100 text-red-700',
-    Success: 'bg-green-100 text-green-700',
-  }
-
   return (
     <div>
       <PageHeader
         title="Notifications"
-        subtitle="Send push notifications to students, parents and staff"
+        subtitle="Send push notifications to staff and roles"
         action={
           <button onClick={openAdd} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> New Notification
@@ -144,9 +133,7 @@ export default function NotificationPage() {
         }
       />
 
-      {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>
-      )}
+      {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
 
       <div className="card">
         <div className="p-4 border-b border-gray-100 flex items-center gap-3 flex-wrap">
@@ -154,33 +141,19 @@ export default function NotificationPage() {
           <span className="text-sm text-gray-500 ml-auto">{total} records</span>
         </div>
 
-        <Table
-          headers={['Sl No.', 'Title', 'Message', 'Type', 'Sent To', 'Image', 'Actions']}
-          empty={!loading && data.length === 0}
-        >
+        <Table headers={['Sl No.', 'Title', 'Message', 'Role', 'Image', 'Actions']} empty={!loading && data.length === 0}>
           {loading ? (
-            <tr>
-              <td colSpan={7} className="table-td text-center text-gray-400 py-8">Loading...</td>
-            </tr>
+            <tr><td colSpan={6} className="table-td text-center text-gray-400 py-8">Loading...</td></tr>
           ) : data.map((n, i) => (
             <tr key={n.id ?? n.notification_id ?? i} className="hover:bg-gray-50 transition-colors">
               <td className="table-td text-gray-400">{(page - 1) * PER_PAGE + i + 1}</td>
               <td className="table-td font-semibold text-gray-900">{n.title || '—'}</td>
               <td className="table-td text-gray-500 max-w-xs truncate">{n.message || '—'}</td>
-              <td className="table-td">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeColor[n.type] || 'bg-gray-100 text-gray-600'}`}>
-                  {n.type || '—'}
-                </span>
-              </td>
-              <td className="table-td text-gray-600">{n.sent_to || '—'}</td>
+              <td className="table-td text-gray-600">{n.role_name || '—'}</td>
               <td className="table-td">
                 {(n.id ?? n.notification_id) ? (
-                  <a
-                    href={notificationApi.imageUrl(n.id ?? n.notification_id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary-600 hover:underline text-xs"
-                  >
+                  <a href={notificationApi.imageUrl(n.id ?? n.notification_id)} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-primary-600 hover:underline text-xs">
                     <ImageIcon className="w-3 h-3" /> View
                   </a>
                 ) : '—'}
@@ -211,7 +184,7 @@ export default function NotificationPage() {
           <>
             <button onClick={() => { setModal(false); setFormErrors({}) }} className="btn-secondary">Cancel</button>
             <button onClick={handleSave} className="btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : 'Send'}
             </button>
           </>
         }
@@ -236,18 +209,16 @@ export default function NotificationPage() {
           />
         </FormField>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Type">
-            <select className="input" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-              {NOTIF_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Send To">
-            <select className="input" value={form.sent_to} onChange={e => setForm(f => ({ ...f, sent_to: e.target.value }))}>
-              {SEND_TO_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </FormField>
-        </div>
+        <FormField label="Role">
+          <select
+            className="input"
+            value={form.role_id}
+            onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}
+          >
+            <option value="">— All Roles —</option>
+            {roles.map(r => <option key={r.role_id} value={r.role_id}>{r.role_name}</option>)}
+          </select>
+        </FormField>
 
         <FormField label="Image (optional)">
           <label className="flex flex-col gap-2 cursor-pointer">

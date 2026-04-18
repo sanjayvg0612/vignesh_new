@@ -51,6 +51,7 @@ export default function SubjectTeacherPage() {
             class_code:   g.class_code,
             section_id:   g.section_id,
             section_code: g.section_code,
+            group_id:     g.school_group_id || g.group_id || '',
           })
         })
       })
@@ -71,7 +72,7 @@ export default function SubjectTeacherPage() {
     setSections([])
     setSubjects([])
     setForm(item ? {
-      group_id:   '',
+      group_id:   String(item.group_id   || ''),
       class_id:   String(item.class_id   || ''),
       section_id: String(item.section_id || ''),
       subject_id: String(item.subject_id || ''),
@@ -83,18 +84,18 @@ export default function SubjectTeacherPage() {
         groupApi.dropdown(),
         employeeApi.dropdown(),
       ])
-      setGroups(Array.isArray(groupRes.result)    ? groupRes.result    : [])
-      setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result : [])
+      setGroups(Array.isArray(groupRes.result)     ? groupRes.result    : [])
+      setTeachers(Array.isArray(teacherRes.result) ? teacherRes.result  : [])
     } catch { setGroups([]); setTeachers([]) }
 
-    // Edit mode: load classes, sections and subjects for the existing values
+    // Edit mode: load classes, sections and subjects for existing values
     if (item?.class_id) {
       setClassLoading(true)
       setSectionLoading(true)
       setSubjectLoading(true)
       try {
         const [classRes, secRes, subRes] = await Promise.all([
-          classApi.dropdown(),
+          classApi.dropdown({ school_group_id: item.group_id || undefined }),
           sectionApi.dropdown({ class_id: item.class_id }),
           subjectApi.dropdown({ class_id: item.class_id }),
         ])
@@ -142,7 +143,7 @@ export default function SubjectTeacherPage() {
 
   const validate = () => {
     const e = {}
-    if (!form.group_id)   e.group_id   = 'Group is required'
+    if (!form.group_id) e.group_id = 'Group is required'
     if (!form.class_id)   e.class_id   = 'Class is required'
     if (!form.section_id) e.section_id = 'Section is required'
     if (!form.subject_id) e.subject_id = 'Subject is required'
@@ -239,7 +240,7 @@ export default function SubjectTeacherPage() {
             onChange={e => handleGroupChange(e.target.value)}
           >
             <option value="">— Select Group —</option>
-            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
           </select>
           {errors.group_id && <p className="text-xs text-red-500 mt-1">{errors.group_id}</p>}
         </FormField>
@@ -266,10 +267,10 @@ export default function SubjectTeacherPage() {
             className={`input ${errors.section_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.section_id}
             onChange={e => { setForm(p => ({ ...p, section_id: e.target.value })); if (errors.section_id) setErrors(p => ({ ...p, section_id: '' })) }}
-            disabled={sectionLoading || !form.class_id || sections.length === 0}
+            disabled={sectionLoading || sections.length === 0}
           >
             <option value="">
-              {sectionLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : sections.length === 0 ? 'No sections available' : '— Select Section —'}
+              {sectionLoading ? 'Loading...' : sections.length === 0 ? 'No sections available' : '— Select Section —'}
             </option>
             {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_code}</option>)}
           </select>
@@ -282,10 +283,10 @@ export default function SubjectTeacherPage() {
             className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.subject_id}
             onChange={e => { setForm(p => ({ ...p, subject_id: e.target.value })); if (errors.subject_id) setErrors(p => ({ ...p, subject_id: '' })) }}
-            disabled={subjectLoading || !form.class_id || subjects.length === 0}
+            disabled={subjectLoading || subjects.length === 0}
           >
             <option value="">
-              {subjectLoading ? 'Loading...' : !form.class_id ? '— Select Class first —' : subjects.length === 0 ? 'No subjects available' : '— Select Subject —'}
+              {subjectLoading ? 'Loading...' : subjects.length === 0 ? 'No subjects available' : '— Select Subject —'}
             </option>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
