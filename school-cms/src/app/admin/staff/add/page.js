@@ -19,7 +19,7 @@ export default function AddStaffPage() {
   const [form, setForm]       = useState({
     first_name: '', last_name: '', email: '', mobile: '',
     gender: 'male', DOB: '', qualification: '', address: '',
-    salary: '', joining_dt: '', session_yr: '',
+    salary: '', joining_dt: '', session_yr: '', employee_id: '',
     role_id: '', status: 'non teaching', is_active: true,
   })
 
@@ -50,6 +50,7 @@ export default function AddStaffPage() {
         joining_dt:    form.joining_dt    || undefined,
         session_yr:    form.session_yr    || undefined,
         role_id:       form.role_id       ? parseInt(form.role_id, 10) : undefined,
+        employee_id:   form.employee_id    || undefined,
         status:        form.status        || undefined,
         is_active:     form.is_active,
       }
@@ -130,6 +131,9 @@ export default function AddStaffPage() {
               <input className="input" value={form.session_yr} onChange={f('session_yr')} placeholder="e.g. 2024-25" />
             </FormField>
           </div>
+          <FormField label="Employee ID">
+            <input className="input" value={form.employee_id} onChange={f('employee_id')} placeholder="e.g. EMP001" />
+          </FormField>
           <FormField label="Address">
             <textarea className="input" rows={2} value={form.address} onChange={f('address')} />
           </FormField>

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { authApi } from '@/lib/api'
 import {
   LayoutDashboard, Users, GraduationCap, Briefcase, ClipboardList,
   Calendar, BookOpen, DollarSign, Image, MessageSquare, Bus, Settings,
@@ -22,7 +23,6 @@ const NAV = [
     { label: 'Class',   href: '/admin/admin-management/class',    icon: School },
     { label: 'Section', href: '/admin/admin-management/section',  icon: LayoutList },
     { label: 'Subject', href: '/admin/admin-management/subject',  icon: BookOpen },
-    { label: 'Icon',    href: '/admin/admin-management/icon',     icon: ImageIcon },
   ]},
   { label: 'Students', icon: Users, children: [
     { label: 'Enquiry Student', href: '/admin/students/enquiry',     icon: ClipboardEdit },
@@ -130,7 +130,12 @@ function NavItem({ item, openLabel, setOpenLabel }) {
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const pathname = usePathname()
   const router = useRouter()
-  const logout = () => router.push('/login')
+  const logout = async () => {
+    try { await authApi.logout() } catch {}
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    router.push('/login')
+  }
 
   // Find which menu is active on initial load
   const initialOpen = NAV.find(item =>

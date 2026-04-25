@@ -1,6 +1,6 @@
 'use client'
 import { usePathname } from 'next/navigation'
-import { Menu, Bell, ChevronDown } from 'lucide-react'
+import { Menu, ChevronDown } from 'lucide-react'
 
 const LABELS = {
   '/admin/dashboard': ['Dashboard'],
@@ -62,13 +62,10 @@ export default function Header({ setMobileOpen }) {
       </div>
       <div className="flex items-center gap-2">
         <div className="hidden sm:flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700">
-          2025–2026 <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          {(() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return `${y}–${y + 1}` })()}
+          {/* <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> */}
         </div>
-        <button className="relative p-2 rounded-lg hover:bg-gray-100">
-          <Bell className="w-4 h-4 text-gray-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
-        <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold text-sm cursor-pointer">A</div>
+<div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold text-sm cursor-pointer">A</div>
       </div>
     </header>
   )

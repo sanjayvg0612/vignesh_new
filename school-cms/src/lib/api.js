@@ -640,3 +640,94 @@ export const studentApi = {
     }).then(r => r.json())
   },
 }
+
+
+// ── GALLERY ───────────────────────────────────────────────────────────────────
+
+export const galleryApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    q.set('school_id', params.school_id ?? SCHOOL_ID)
+    if (params.status != null) q.set('status', params.status)
+    if (params.page)      q.set('page',      params.page)
+    if (params.page_size) q.set('page_size', params.page_size)
+    return request('GET', `/api/gallery/?${q}`)
+  },
+  getById: (id) => request('GET', `/api/gallery/${id}/`),
+  create: (files, status) => {
+    const form = new FormData()
+    form.append('school_id', SCHOOL_ID)
+    if (status != null) form.append('status', status)
+    files.forEach(f => form.append('files', f))
+    return fetch(`${BASE_URL}/api/gallery/`, {
+      method: 'POST',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  update: (id, { status, file } = {}) => {
+    const form = new FormData()
+    if (status != null) form.append('status', status)
+    if (file)           form.append('file', file)
+    return fetch(`${BASE_URL}/api/gallery/${id}/`, {
+      method: 'PUT',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  delete: (id) => request('DELETE', `/api/gallery/${id}/`),
+  imageUrl: (id) => `${BASE_URL}/api/gallery/${id}/image/`,
+}
+
+// ── BANNER (SLIDER) ───────────────────────────────────────────────────────────
+
+export const bannerApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    q.set('school_id', params.school_id ?? SCHOOL_ID)
+    if (params.status != null) q.set('status', params.status)
+    if (params.page)      q.set('page',      params.page)
+    if (params.page_size) q.set('page_size', params.page_size)
+    return request('GET', `/api/banner/?${q}`)
+  },
+  getById: (id) => request('GET', `/api/banner/${id}/`),
+  create: (files, status) => {
+    const form = new FormData()
+    form.append('school_id', SCHOOL_ID)
+    if (status != null) form.append('status', status)
+    files.forEach(f => form.append('files', f))
+    return fetch(`${BASE_URL}/api/banner/`, {
+      method: 'POST',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  update: (id, { status, file } = {}) => {
+    const form = new FormData()
+    if (status != null) form.append('status', status)
+    if (file)           form.append('file', file)
+    return fetch(`${BASE_URL}/api/banner/${id}/`, {
+      method: 'PUT',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  delete: (id) => request('DELETE', `/api/banner/${id}/`),
+  imageUrl: (id) => `${BASE_URL}/api/banner/${id}/image/`,
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+
+export const authApi = {
+  login:  (mobile, password) =>
+    fetch(`${BASE_URL}/api/auth/web/login/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'client_key': CLIENT_KEY },
+      body: JSON.stringify({ mobile, password }),
+    }).then(r => r.json()),
+  logout: () =>
+    fetch(`${BASE_URL}/api/auth/logout/`, {
+      method: 'POST',
+      headers: { 'client_key': CLIENT_KEY },
+    }).then(r => r.json()).catch(() => ({})),
+}
