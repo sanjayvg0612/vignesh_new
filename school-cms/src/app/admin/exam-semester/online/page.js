@@ -41,7 +41,7 @@ export default function OnlineExamPage() {
     setSubjects([])
     const cid = form.class_id
     if (!cid) return
-    subjectApi.dropdown({ class_id: cid, limit: 200 })
+    subjectApi.dropdown({ class_id: cid, limit: 100 })
       .then(r => setSubjects(r.result || []))
       .catch(() => setSubjects([]))
   }, [form.class_id])
@@ -149,7 +149,7 @@ export default function OnlineExamPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Class</label>
           <select className="input w-40" value={filterClassId} onChange={e => { setFilterClassId(e.target.value); setPage(1) }}>
             <option value="">— All Classes —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[200px]">

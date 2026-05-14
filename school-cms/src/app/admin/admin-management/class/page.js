@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader, SearchBar, Table, Pagination, Modal, FormField, StatusBadge } from '@/components/ui'
-import { classApi, groupApi, streamApi, getSchoolId } from '@/lib/api'
+import { classApi, groupApi, getSchoolId } from '@/lib/api'
 
 const PER_PAGE = 10
 
@@ -20,12 +20,10 @@ export default function ClassPage() {
   const [saving, setSaving]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]       = useState({
-    class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active',
+    class_name: '', class_code: '', school_group_id: '', status: 'Active',
   })
-  const [groups, setGroups]         = useState([])
-  const [streams, setStreams]       = useState([])
-  const [streamLoading, setStreamLoading] = useState(false)
-  const [errors, setErrors]         = useState({})
+  const [groups, setGroups] = useState([])
+  const [errors, setErrors] = useState({})
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -54,39 +52,17 @@ export default function ClassPage() {
     setEditing(cls)
     const groupId = cls ? String(cls.school_group_id || cls.group_id || '') : ''
     setForm(cls ? {
-      class_name:       cls.class_name       || '',
-      class_code:       cls.class_code,
-      school_group_id:  groupId,
-      school_stream_id: cls.school_stream_id ? String(cls.school_stream_id) : '',
-      status:           toUiStatus(cls.status),
-    } : { class_name: '', class_code: '', school_group_id: '', school_stream_id: '', status: 'Active' })
+      class_name:      cls.class_name  || '',
+      class_code:      cls.class_code,
+      school_group_id: groupId,
+      status:          toUiStatus(cls.status),
+    } : { class_name: '', class_code: '', school_group_id: '', status: 'Active' })
     setErrors({})
-    setStreams([])
     try {
       const groupRes = await groupApi.dropdown()
       setGroups(Array.isArray(groupRes.result) ? groupRes.result : [])
     } catch { setGroups([]) }
-    // Edit mode: load streams for existing group
-    if (groupId) {
-      setStreamLoading(true)
-      try {
-        const streamRes = await streamApi.dropdown({ school_group_id: groupId })
-        setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
-      } catch { setStreams([]) } finally { setStreamLoading(false) }
-    }
     setModal(true)
-  }
-
-  const handleGroupChange = async (groupId) => {
-    setForm(f => ({ ...f, school_group_id: groupId, school_stream_id: '' }))
-    if (errors.school_group_id) setErrors(p => ({ ...p, school_group_id: '' }))
-    if (!groupId) { setStreams([]); return }
-    setStreamLoading(true)
-    try {
-      const streamRes = await streamApi.dropdown({ school_group_id: groupId })
-      const result = streamRes.result
-      setStreams(Array.isArray(result) ? result : [])
-    } catch { setStreams([]) } finally { setStreamLoading(false) }
   }
 
   const validate = () => {
@@ -104,20 +80,18 @@ export default function ClassPage() {
     try {
       if (editing) {
         await classApi.update(editing.class_id, {
-          class_name:       form.class_name      || undefined,
-          class_code:       form.class_code,
-          school_group_id:  parseInt(form.school_group_id,  10) || undefined,
-          school_stream_id: parseInt(form.school_stream_id, 10) || undefined,
-          status:           toApiStatus(form.status),
+          class_name:      form.class_name     || undefined,
+          class_code:      form.class_code,
+          school_group_id: parseInt(form.school_group_id, 10) || undefined,
+          status:          toApiStatus(form.status),
         })
       } else {
         await classApi.create({
-          school_id:        getSchoolId(),
-          school_group_id:  parseInt(form.school_group_id,  10),
-          school_stream_id: parseInt(form.school_stream_id, 10) || undefined,
-          class_name:       form.class_name      || undefined,
-          class_code:       form.class_code,
-          status:           toApiStatus(form.status),
+          school_id:       getSchoolId(),
+          school_group_id: parseInt(form.school_group_id, 10),
+          class_name:      form.class_name     || undefined,
+          class_code:      form.class_code,
+          status:          toApiStatus(form.status),
         })
       }
       setModal(false)
@@ -157,17 +131,16 @@ export default function ClassPage() {
           <span className="text-sm text-gray-500">{total} records</span>
         </div>
 
-        <Table headers={['Sl No.','Class Code','Group','Stream', 'Status', 'Actions']} empty={!loading && data.length === 0}>
+        <Table headers={['Sl No.','Class Code','Group', 'Status', 'Actions']} empty={!loading && data.length === 0}>
           {loading ? (
             <tr>
-              <td colSpan={7} className="table-td text-center text-gray-400 py-8">Loading...</td>
+              <td colSpan={5} className="table-td text-center text-gray-400 py-8">Loading...</td>
             </tr>
           ) : data.map((c, i) => (
             <tr key={c.class_id} className="hover:bg-gray-50 transition-colors">
               <td className="table-td text-gray-400">{(page - 1) * PER_PAGE + i + 1}</td>
               <td className="table-td font-mono text-sm font-medium text-gray-900">{c.class_code}</td>
               <td className="table-td">{c.group_name  || c.school_group_id}</td>
-              <td className="table-td">{c.stream_name || '—'}</td>
               <td className="table-td"><StatusBadge status={toUiStatus(c.status)} /></td>
               <td className="table-td">
                 <div className="flex items-center gap-2">
@@ -203,7 +176,10 @@ export default function ClassPage() {
           <select
             className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`}
             value={form.school_group_id}
-            onChange={e => handleGroupChange(e.target.value)}
+            onChange={e => {
+              setForm(f => ({ ...f, school_group_id: e.target.value }))
+              if (errors.school_group_id) setErrors(p => ({ ...p, school_group_id: '' }))
+            }}
           >
             <option value="">— Select Group —</option>
             {groups.map(g => (
@@ -211,21 +187,6 @@ export default function ClassPage() {
             ))}
           </select>
           {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
-        </FormField>
-        <FormField label="Stream">
-          <select
-            className="input"
-            value={form.school_stream_id}
-            onChange={e => setForm(f => ({ ...f, school_stream_id: e.target.value }))}
-            disabled={streamLoading || !form.school_group_id || streams.length === 0}
-          >
-            <option value="">
-              {streamLoading ? 'Loading...' : streams.length === 0 ? 'No streams available' : '— Select Stream (optional) —'}
-            </option>
-            {streams.length != 0  && streams?.map(s => (
-              <option key={s.school_stream_id} value={s.school_stream_id}>{s.stream_name}</option>
-            ))}
-          </select>
         </FormField>
         <FormField label="Class Code" required>
           <input

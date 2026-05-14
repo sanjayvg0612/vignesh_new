@@ -2,14 +2,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, Paperclip } from 'lucide-react'
 import { PageHeader, SearchBar, Table, Pagination, Modal, FormField } from '@/components/ui'
-import { announcementApi, groupApi, streamApi, classApi, sectionApi } from '@/lib/api'
+import { announcementApi, groupApi, classApi, sectionApi } from '@/lib/api'
 
 const PER_PAGE = 10
 const CATEGORIES = ['EXAMS', 'EVENTS', 'CAMPUS', 'GENERAL']
 
 const EMPTY_FORM = {
   title: '', description: '', url: '', category: '',
-  school_group_id: '', school_stream_id: '', class_id: '', section_id: '',
+  school_group_id: '', class_id: '', section_id: '',
 }
 
 export default function AnnouncementPage() {
@@ -30,10 +30,8 @@ export default function AnnouncementPage() {
 
   // Cascade dropdowns
   const [groups, setGroups]     = useState([])
-  const [streams, setStreams]   = useState([])
   const [classes, setClasses]   = useState([])
   const [sections, setSections] = useState([])
-  const [streamLoading, setStreamLoading]   = useState(false)
   const [classLoading, setClassLoading]     = useState(false)
   const [sectionLoading, setSectionLoading] = useState(false)
 
@@ -61,32 +59,16 @@ export default function AnnouncementPage() {
   }, [])
 
   const handleGroupChange = async (id) => {
-    setForm(f => ({ ...f, school_group_id: id, school_stream_id: '', class_id: '', section_id: '' }))
-    setStreams([]); setClasses([]); setSections([])
+    setForm(f => ({ ...f, school_group_id: id, class_id: '', section_id: '' }))
+    setClasses([]); setSections([])
     if (formErrors.school_group_id) setFormErrors(p => ({ ...p, school_group_id: '' }))
     if (!id) return
-    setStreamLoading(true); setClassLoading(true)
-    try {
-      const [streamRes, classRes] = await Promise.all([
-        streamApi.dropdown({ school_group_id: id }),
-        classApi.dropdown({ school_group_id: id }),
-      ])
-      setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
-      setClasses(Array.isArray(classRes.result)  ? classRes.result  : [])
-    } catch { setStreams([]); setClasses([]) }
-    finally { setStreamLoading(false); setClassLoading(false) }
-  }
-
-  const handleStreamChange = async (id) => {
-    setForm(f => ({ ...f, school_stream_id: id, class_id: '', section_id: '' }))
-    setClasses([]); setSections([])
     setClassLoading(true)
     try {
-      const params = { school_group_id: form.school_group_id }
-      if (id) params.stream_id = id
-      const res = await classApi.dropdown(params)
-      setClasses(Array.isArray(res.result) ? res.result : [])
-    } catch { setClasses([]) } finally { setClassLoading(false) }
+      const classRes = await classApi.dropdown({ school_group_id: id })
+      setClasses(Array.isArray(classRes.result) ? classRes.result : [])
+    } catch { setClasses([]) }
+    finally { setClassLoading(false) }
   }
 
   const handleClassChange = async (id) => {
@@ -103,7 +85,7 @@ export default function AnnouncementPage() {
 
   const handleSearch = (v) => { setSearch(v); setPage(1) }
 
-  const resetDropdowns = () => { setStreams([]); setClasses([]); setSections([]) }
+  const resetDropdowns = () => { setClasses([]); setSections([]) }
 
   const openAdd = () => {
     setEditing(null); setFormErrors({})
@@ -126,8 +108,7 @@ export default function AnnouncementPage() {
       full = res.result || a
     } catch { /* fall back to list row */ }
 
-    const groupId   = full.school_group_id  || full.group_id  || a.school_group_id  || a.group_id
-    const streamId  = full.school_stream_id || full.stream_id || a.school_stream_id || a.stream_id
+    const groupId   = full.school_group_id || full.group_id  || a.school_group_id || a.group_id
     const classId   = full.class_id   || a.class_id
     const sectionId = full.section_id || a.section_id
 
@@ -136,23 +117,18 @@ export default function AnnouncementPage() {
       description:     full.description || a.description || a.content || '',
       url:             full.url         || a.url         || '',
       category:        full.category    || a.category    || '',
-      school_group_id:  groupId   ? String(groupId)   : '',
-      school_stream_id: streamId  ? String(streamId)  : '',
-      class_id:         classId   ? String(classId)   : '',
-      section_id:       sectionId ? String(sectionId) : '',
+      school_group_id: groupId   ? String(groupId)   : '',
+      class_id:        classId   ? String(classId)   : '',
+      section_id:      sectionId ? String(sectionId) : '',
     })
 
     if (groupId) {
-      setStreamLoading(true); setClassLoading(true)
+      setClassLoading(true)
       try {
-        const [streamRes, classRes] = await Promise.all([
-          streamApi.dropdown({ school_group_id: groupId }),
-          classApi.dropdown({ school_group_id: groupId }),
-        ])
-        setStreams(Array.isArray(streamRes.result) ? streamRes.result : [])
-        setClasses(Array.isArray(classRes.result)  ? classRes.result  : [])
-      } catch { setStreams([]); setClasses([]) }
-      finally { setStreamLoading(false); setClassLoading(false) }
+        const classRes = await classApi.dropdown({ school_group_id: groupId })
+        setClasses(Array.isArray(classRes.result) ? classRes.result : [])
+      } catch { setClasses([]) }
+      finally { setClassLoading(false) }
     }
     if (classId) {
       setSectionLoading(true)
@@ -166,9 +142,9 @@ export default function AnnouncementPage() {
 
   const validate = () => {
     const ve = {}
-    if (!form.title.trim())        ve.title           = 'Title is required'
-    if (!form.school_group_id)     ve.school_group_id = 'Group is required'
-    if (!form.class_id)            ve.class_id        = 'Class is required'
+    if (!form.title.trim())    ve.title           = 'Title is required'
+    if (!form.school_group_id) ve.school_group_id = 'Group is required'
+    if (!form.class_id)        ve.class_id        = 'Class is required'
     return ve
   }
 
@@ -178,14 +154,13 @@ export default function AnnouncementPage() {
     setSaving(true)
     try {
       const payload = {
-        title:            form.title,
-        description:      form.description  || undefined,
-        url:              form.url          || undefined,
-        category:         form.category     || undefined,
-        school_group_id:  Number(form.school_group_id),
-        school_stream_id: form.school_stream_id ? Number(form.school_stream_id) : undefined,
-        class_id:         Number(form.class_id),
-        section_id:       form.section_id ? Number(form.section_id) : undefined,
+        title:           form.title,
+        description:     form.description  || undefined,
+        url:             form.url          || undefined,
+        category:        form.category     || undefined,
+        school_group_id: Number(form.school_group_id),
+        class_id:        Number(form.class_id),
+        section_id:      form.section_id ? Number(form.section_id) : undefined,
       }
       if (editing) {
         await announcementApi.update(editing.id ?? editing.announcement_id, payload, file || undefined)
@@ -309,21 +284,6 @@ export default function AnnouncementPage() {
             {formErrors.school_group_id && <p className="text-xs text-red-500 mt-1">{formErrors.school_group_id}</p>}
           </FormField>
 
-          {/* Stream */}
-          <FormField label="Stream">
-            <select
-              className="input"
-              value={form.school_stream_id}
-              onChange={e => handleStreamChange(e.target.value)}
-              disabled={streamLoading || !form.school_group_id}
-            >
-              <option value="">
-                {streamLoading ? 'Loading...' : !form.school_group_id ? '— Select Group first —' : streams.length === 0 ? 'No streams available' : '— Select Stream (optional) —'}
-              </option>
-              {streams.map(s => <option key={s.school_stream_id ?? s.id} value={s.school_stream_id ?? s.id}>{s.stream_name || s.name}</option>)}
-            </select>
-          </FormField>
-
           {/* Class */}
           <FormField label="Class" required>
             <select
@@ -335,7 +295,7 @@ export default function AnnouncementPage() {
               <option value="">
                 {classLoading ? 'Loading...' : !form.school_group_id ? '— Select Group first —' : classes.length === 0 ? 'No classes available' : '— Select Class —'}
               </option>
-              {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}{c.stream_name ? ` - ${c.stream_name}` : ''}</option>)}
+              {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}</option>)}
             </select>
             {formErrors.class_id && <p className="text-xs text-red-500 mt-1">{formErrors.class_id}</p>}
           </FormField>

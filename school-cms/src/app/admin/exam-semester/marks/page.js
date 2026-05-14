@@ -40,7 +40,7 @@ export default function MarksPage() {
     setSubjects([])
     if (!filterClassId && !formClassId) return
     const cid = formClassId || filterClassId
-    subjectApi.dropdown({ class_id: cid, limit: 200 })
+    subjectApi.dropdown({ class_id: cid, limit: 100 })
       .then(r => setSubjects(r.result || []))
       .catch(() => setSubjects([]))
   }, [filterClassId, formClassId])
@@ -50,7 +50,7 @@ export default function MarksPage() {
     setStudents([])
     setFilterStudentId('')
     if (!filterClassId) return
-    studentApi.list({ school_id: SCHOOL_ID, class_id: filterClassId, limit: 200 })
+    studentApi.list({ school_id: SCHOOL_ID, class_id: filterClassId, limit: 100 })
       .then(r => setStudents(r.result?.data || []))
       .catch(() => setStudents([]))
   }, [filterClassId])
@@ -147,7 +147,7 @@ export default function MarksPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">Class <span className="text-red-500">*</span></label>
           <select className="input w-40" value={filterClassId} onChange={e => { setFilterClassId(e.target.value); setPage(1) }}>
             <option value="">— Select Class —</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classes.map(c => <option key={c.class_id} value={c.class_id}>{c.class_code}</option>)}
           </select>
         </div>
         <div>

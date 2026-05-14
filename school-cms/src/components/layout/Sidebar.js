@@ -19,8 +19,7 @@ const NAV = [
   { label: 'Admin Management', icon: UserCheck, children: [
     { label: 'Admin',   href: '/admin/admin-management/admins',   icon: UserCheck },
     { label: 'Group',   href: '/admin/admin-management/group',    icon: Users2 },
-    { label: 'Stream',  href: '/admin/admin-management/stream',   icon: Layers },
-    { label: 'Class',   href: '/admin/admin-management/class',    icon: School },
+{ label: 'Class',   href: '/admin/admin-management/class',    icon: School },
     { label: 'Section', href: '/admin/admin-management/section',  icon: LayoutList },
     { label: 'Subject', href: '/admin/admin-management/subject',  icon: BookOpen },
   ]},
@@ -34,9 +33,10 @@ const NAV = [
     { label: 'Promote',         href: '/admin/students/promote',     icon: TrendingUp },
   ]},
   { label: 'Staff Management', icon: Briefcase, children: [
-    { label: 'Roles',        href: '/admin/staff/roles',       icon: ShieldCheck },
-    { label: 'Add Staff',    href: '/admin/staff/add',         icon: UserPlus },
-    { label: 'Bulk Upload',  href: '/admin/staff/bulk-upload', icon: Upload },
+    { label: 'Roles',           href: '/admin/staff/roles',           icon: ShieldCheck },
+    { label: 'Add Staff',       href: '/admin/staff/add',             icon: UserPlus },
+    { label: 'Bulk Upload',     href: '/admin/staff/bulk-upload',     icon: Upload },
+    { label: 'Employee Leave',  href: '/admin/staff/employee-leave',  icon: ClipboardList },
   ]},
   { label: 'Teachers', icon: GraduationCap, children: [
     { label: 'All Teachers',          href: '/admin/teachers',                  icon: GraduationCap },
@@ -132,7 +132,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const router = useRouter()
   const logout = async () => {
     try { await authApi.logout() } catch {}
-    localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
     router.push('/login')
   }

@@ -26,7 +26,7 @@ export default function AttendancePage() {
     if (!classId) { setStudents([]); setStatuses({}); return }
     setLoading(true); setError('')
     try {
-      const res  = await studentApi.list({ class_id: classId, limit: 200 })
+      const res  = await studentApi.list({ class_id: classId, limit: 100 })
       const list = res.result?.data || res.result || []
       setStudents(list)
       const init = {}

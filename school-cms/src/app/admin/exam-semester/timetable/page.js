@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader, Table, Pagination, Modal, FormField } from '@/components/ui'
-import { examTimetableApi, examApi, streamApi, groupApi, subjectApi } from '@/lib/api'
+import { examTimetableApi, examApi, subjectApi } from '@/lib/api'
 
 const PER_PAGE = 10
 const AMPM = ['AM', 'PM']
 
 const EMPTY_FORM = {
-  exam_id: '', school_stream_id: '', school_group_id: '', subject_id: '',
+  exam_id: '', subject_id: '',
   total_marks: '', pass_mark: '',
   exam_start_date: '', exam_end_date: '',
   start_time: '', start_ampm: 'AM',
@@ -23,10 +23,8 @@ export default function ExamTimetablePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
 
-  const [exams, setExams]     = useState([])
-  const [streams, setStreams]  = useState([])
-  const [groups, setGroups]   = useState([])
-  const [subjects, setSubjects]= useState([])
+  const [exams, setExams]      = useState([])
+  const [subjects, setSubjects] = useState([])
 
   const [filterExamId, setFilterExamId] = useState('')
 
@@ -41,8 +39,6 @@ export default function ExamTimetablePage() {
   // Load dropdowns once
   useEffect(() => {
     examApi.list({ limit: 100 }).then(r => setExams(r.result?.data || [])).catch(() => setExams([]))
-    streamApi.dropdown().then(r => setStreams(r.result || [])).catch(() => setStreams([]))
-    groupApi.dropdown().then(r => setGroups(r.result || [])).catch(() => setGroups([]))
     subjectApi.dropdown({ limit: 500 }).then(r => setSubjects(r.result || [])).catch(() => setSubjects([]))
   }, [])
 
@@ -67,19 +63,17 @@ export default function ExamTimetablePage() {
   const openModal = (item = null) => {
     setEditing(item)
     setForm(item ? {
-      exam_id:          item.exam_id          != null ? String(item.exam_id)          : '',
-      school_stream_id: item.school_stream_id != null ? String(item.school_stream_id) : '',
-      school_group_id:  item.school_group_id  != null ? String(item.school_group_id)  : '',
-      subject_id:       item.subject_id       != null ? String(item.subject_id)       : '',
-      total_marks:      item.total_marks      != null ? String(item.total_marks)      : '',
-      pass_mark:        item.pass_mark        != null ? String(item.pass_mark)        : '',
-      exam_start_date:  item.exam_start_date  ? item.exam_start_date.slice(0, 16)    : '',
-      exam_end_date:    item.exam_end_date    ? item.exam_end_date.slice(0, 16)      : '',
-      start_time:       item.start_time       || '',
-      start_ampm:       item.start_ampm       || 'AM',
-      end_time:         item.end_time         || '',
-      end_ampm:         item.end_ampm         || 'PM',
-      is_active:        item.is_active !== false,
+      exam_id:         item.exam_id         != null ? String(item.exam_id)         : '',
+      subject_id:      item.subject_id      != null ? String(item.subject_id)      : '',
+      total_marks:     item.total_marks     != null ? String(item.total_marks)     : '',
+      pass_mark:       item.pass_mark       != null ? String(item.pass_mark)       : '',
+      exam_start_date: item.exam_start_date ? item.exam_start_date.slice(0, 16)   : '',
+      exam_end_date:   item.exam_end_date   ? item.exam_end_date.slice(0, 16)     : '',
+      start_time:      item.start_time      || '',
+      start_ampm:      item.start_ampm      || 'AM',
+      end_time:        item.end_time        || '',
+      end_ampm:        item.end_ampm        || 'PM',
+      is_active:       item.is_active !== false,
     } : EMPTY_FORM)
     setErrors({})
     setModal(true)
@@ -87,13 +81,11 @@ export default function ExamTimetablePage() {
 
   const validate = () => {
     const e = {}
-    if (!form.exam_id) e.exam_id = 'Exam is required'
-    if (!form.school_stream_id) e.school_stream_id = 'Stream is required'
-    if (!form.school_group_id) e.school_group_id = 'Group is required'
-    if (!form.subject_id) e.subject_id = 'Subject is required'
-    if (!form.total_marks) e.total_marks = 'Total marks is required'
-    if (!form.pass_mark) e.pass_mark = 'Pass mark is required'
-    if (!form.exam_start_date) e.exam_start_date = 'Start date is required'
+    if (!form.exam_id)         e.exam_id         = 'Exam is required'
+    if (!form.subject_id)      e.subject_id      = 'Subject is required'
+    if (!form.total_marks)     e.total_marks      = 'Total marks is required'
+    if (!form.pass_mark)       e.pass_mark        = 'Pass mark is required'
+    if (!form.exam_start_date) e.exam_start_date  = 'Start date is required'
     return e
   }
 
@@ -104,19 +96,17 @@ export default function ExamTimetablePage() {
     setSaving(true)
     try {
       const payload = {
-        exam_id:          parseInt(form.exam_id,          10),
-        school_stream_id: parseInt(form.school_stream_id, 10),
-        school_group_id:  parseInt(form.school_group_id,  10),
-        subject_id:       parseInt(form.subject_id,       10),
-        total_marks:      parseFloat(form.total_marks),
-        pass_mark:        parseFloat(form.pass_mark),
-        exam_start_date:  form.exam_start_date,
-        exam_end_date:    form.exam_end_date   || undefined,
-        start_time:       form.start_time      || undefined,
-        start_ampm:       form.start_ampm,
-        end_time:         form.end_time        || undefined,
-        end_ampm:         form.end_ampm,
-        is_active:        form.is_active,
+        exam_id:         parseInt(form.exam_id,     10),
+        subject_id:      parseInt(form.subject_id,  10),
+        total_marks:     parseFloat(form.total_marks),
+        pass_mark:       parseFloat(form.pass_mark),
+        exam_start_date: form.exam_start_date,
+        exam_end_date:   form.exam_end_date   || undefined,
+        start_time:      form.start_time      || undefined,
+        start_ampm:      form.start_ampm,
+        end_time:        form.end_time        || undefined,
+        end_ampm:        form.end_ampm,
+        is_active:       form.is_active,
       }
       if (editing) {
         await examTimetableApi.update(editing.timetable_id ?? editing.id, payload)
@@ -214,22 +204,6 @@ export default function ExamTimetablePage() {
           </select>
           {errors.exam_id && <p className="text-xs text-red-500 mt-1">{errors.exam_id}</p>}
         </FormField>
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Stream" required>
-            <select className={`input ${errors.school_stream_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_stream_id} onChange={f('school_stream_id')}>
-              <option value="">— Select Stream —</option>
-              {streams.map(s => <option key={s.id ?? s.school_stream_id} value={s.id ?? s.school_stream_id}>{s.stream_name}</option>)}
-            </select>
-            {errors.school_stream_id && <p className="text-xs text-red-500 mt-1">{errors.school_stream_id}</p>}
-          </FormField>
-          <FormField label="Group" required>
-            <select className={`input ${errors.school_group_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.school_group_id} onChange={f('school_group_id')}>
-              <option value="">— Select Group —</option>
-              {groups.map(g => <option key={g.school_group_id} value={g.school_group_id}>{g.name}</option>)}
-            </select>
-            {errors.school_group_id && <p className="text-xs text-red-500 mt-1">{errors.school_group_id}</p>}
-          </FormField>
-        </div>
         <FormField label="Subject" required>
           <select className={`input ${errors.subject_id ? 'border-red-400 focus:ring-red-400' : ''}`} value={form.subject_id} onChange={f('subject_id')}>
             <option value="">— Select Subject —</option>

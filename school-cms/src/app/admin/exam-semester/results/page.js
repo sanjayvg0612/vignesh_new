@@ -28,7 +28,7 @@ export default function ResultsPage() {
   useEffect(() => {
     setSubjects([])
     if (!filterClassId) return
-    subjectApi.dropdown({ class_id: filterClassId, limit: 200 })
+    subjectApi.dropdown({ class_id: filterClassId, limit: 100 })
       .then(r => setSubjects(r.result || []))
       .catch(() => setSubjects([]))
   }, [filterClassId])

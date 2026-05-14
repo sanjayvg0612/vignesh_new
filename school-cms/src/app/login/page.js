@@ -15,23 +15,14 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!mobile.trim() || !password.trim()) {
-      setError('Mobile number and password are required.')
-      return
-    }
     setLoading(true)
     try {
       const res = await authApi.login(mobile.trim(), password)
-      // Handle various success response shapes
-      if (res?.status === false || res?.error || res?.detail) {
-        setError(res.message || res.error || res.detail || 'Invalid credentials.')
-        return
+      // client_key is set as a cookie by the server — browser handles it automatically
+      const user = res?.extra || res?.result || res?.data
+      if (user && typeof user === 'object') {
+        localStorage.setItem('auth_user', JSON.stringify(user))
       }
-      // Store token/session if returned
-      const token = res?.result?.token || res?.token || res?.access || res?.result?.access
-      if (token) localStorage.setItem('auth_token', token)
-      const user = res?.result?.user || res?.result || res?.user
-      if (user) localStorage.setItem('auth_user', JSON.stringify(user))
       router.push('/admin/dashboard')
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.')

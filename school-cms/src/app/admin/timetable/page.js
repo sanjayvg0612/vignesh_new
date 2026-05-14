@@ -62,7 +62,7 @@ export default function TimetablePage() {
     setSubjects([])
     setForm(p => ({ ...p, subject_id: '' }))
     if (!form.class_id) return
-    subjectApi.dropdown({ class_id: form.class_id, limit: 200 })
+    subjectApi.dropdown({ class_id: form.class_id, limit: 100 })
       .then(r => setSubjects(r.result || []))
       .catch(() => setSubjects([]))
   }, [form.class_id])

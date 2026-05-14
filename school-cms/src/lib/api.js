@@ -1,22 +1,36 @@
-const BASE_URL = 'http://69.62.77.182:8005'
-const CLIENT_KEY = 'c2c350fd-a8f1-4df7-8ea6-fc4b6d8096af'
+// All API calls go through Next.js proxy (/proxy/*) → backend (69.62.77.182:8005)
+// This makes cookies work as same-origin — no CORS issues
+const BASE_URL   = '/proxy'
 const SCHOOL_ID  = 1
+const CLIENT_KEY = 'c2c350fd-a8f1-4df7-8ea6-fc4b6d8096af'
 
-export function getSchoolId() {
-  return SCHOOL_ID
+export function getSchoolId() { return SCHOOL_ID }
+
+function handleUnauthorized() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('auth_user')
+  window.location.href = '/login'
 }
 
 async function request(method, path, body = null) {
-  const headers = { 'Content-Type': 'application/json', 'client_key': CLIENT_KEY }
+  const isFormData = body instanceof FormData
+  const headers = { 'client_key': CLIENT_KEY }
+  if (!isFormData) headers['Content-Type'] = 'application/json'
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
   })
 
+  // Auto-logout on invalid/expired session
+  if (res.status === 401 || res.status === 403) {
+    handleUnauthorized()
+    throw new Error('Session expired. Please login again.')
+  }
+
   const data = await res.json()
-  if (!res.ok) throw new Error(data?.message || `Request failed: ${res.status}`)
+  if (!res.ok) throw new Error(data?.message || data?.detail || `Request failed: ${res.status}`)
   return data
 }
 
@@ -35,12 +49,14 @@ export const dashboardApi = {
   birthdays:             () => request('GET', '/api/dashboard/birthdays/today'),
   studentAttendanceToday: (params = {}) => {
     const q = new URLSearchParams()
-    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    if (params.group_id)  q.set('group_id',  params.group_id)
+    if (params.class_id)  q.set('class_id',  params.class_id)
+    if (params.section_id)q.set('section_id',params.section_id)
     return request('GET', `/api/attendance/student/attendance/count/today?${q}`)
   },
   employeeAttendanceToday: (params = {}) => {
     const q = new URLSearchParams()
-    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
+    if (params.group_id) q.set('group_id', params.group_id)
     return request('GET', `/api/attendance/employee/attendance/count/today?${q}`)
   },
 }
@@ -54,22 +70,6 @@ export const groupApi = {
   update:  (id, body)    => request('PUT', `/api/school_group/update_group/${id}`, body),
   delete:  (id)          => request('DELETE', `/api/school_group/delete_group/${id}`),
   dropdown:(params = {}) => request('GET', `/api/school_group/school-groups/all?${qs(params)}`),
-}
-
-// ── SCHOOL STREAM ─────────────────────────────────────────────────────────────
-
-export const streamApi = {
-  list:    (params = {}) => request('GET', `/api/school_stream/streamlist?${qs(params)}`),
-  getById: (id)          => request('GET', `/api/school_stream/get_id/${id}`),
-  create:  (body)        => request('POST', '/api/school_stream/create_stream', body),
-  update:  (id, body)    => request('PUT', `/api/school_stream/update_stream/${id}`, body),
-  delete:  (id)          => request('DELETE', `/api/school_stream/delete_stream/${id}`),
-  dropdown:(params = {}) => {
-    const q = new URLSearchParams()
-    if (params.school_group_id) q.set('school_group_id', params.school_group_id)
-    if (params.search)          q.set('search',          params.search)
-    return request('GET', `/api/school_stream/streams/all?${q}`)
-  },
 }
 
 // ── SCHOOL CLASS ──────────────────────────────────────────────────────────────
@@ -93,8 +93,16 @@ export const classApi = {
 export const subjectApi = {
   list:    (params = {}) => request('GET', `/api/school_stream_subject/subjectlist?${qs(params)}`),
   getById: (id)          => request('GET', `/api/school_stream_subject/get_id/${id}`),
-  create:  (body)        => request('POST', '/api/school_stream_subject/create_subject', body),
-  update:  (id, body)    => request('PUT', `/api/school_stream_subject/update_subject/${id}`, body),
+  create:  (body) => {
+    const fd = new FormData()
+    Object.entries(body).forEach(([k, v]) => { if (v !== undefined && v !== null) fd.append(k, v) })
+    return request('POST', '/api/school_stream_subject/create_subject', fd)
+  },
+  update:  (id, body) => {
+    const fd = new FormData()
+    Object.entries(body).forEach(([k, v]) => { if (v !== undefined && v !== null) fd.append(k, v) })
+    return request('PUT', `/api/school_stream_subject/update_subject/${id}`, fd)
+  },
   delete:  (id)          => request('DELETE', `/api/school_stream_subject/delete_subject/${id}`),
   dropdown:(params = {}) => {
     const q = new URLSearchParams()
@@ -238,10 +246,10 @@ export const gradeApi = {
 export const examApi = {
   list:    (params = {}) => {
     const q = new URLSearchParams()
-    if (params.school_stream_id) q.set('school_stream_id', params.school_stream_id)
-    if (params.search)           q.set('search',           params.search)
-    if (params.page)             q.set('page',             params.page)
-    if (params.limit)            q.set('limit',            params.limit)
+    if (params.class_id) q.set('class_id', params.class_id)
+    if (params.search)   q.set('search',   params.search)
+    if (params.page)     q.set('page',     params.page)
+    if (params.limit)    q.set('limit',    params.limit)
     return request('GET', `/api/exam/exam/list?${q}`)
   },
   getById: (id)          => request('GET', `/api/exam/exam/get_id/${id}`),
@@ -255,13 +263,11 @@ export const examApi = {
 export const examTimetableApi = {
   list:    (params = {}) => {
     const q = new URLSearchParams()
-    if (params.exam_id)          q.set('exam_id',          params.exam_id)
-    if (params.school_stream_id) q.set('school_stream_id', params.school_stream_id)
-    if (params.school_group_id)  q.set('school_group_id',  params.school_group_id)
-    if (params.subject_id)       q.set('subject_id',       params.subject_id)
-    if (params.search)           q.set('search',           params.search)
-    if (params.page)             q.set('page',             params.page)
-    if (params.limit)            q.set('limit',            params.limit)
+    if (params.exam_id)  q.set('exam_id',  params.exam_id)
+    if (params.class_id) q.set('class_id', params.class_id)
+    if (params.search)   q.set('search',   params.search)
+    if (params.page)     q.set('page',     params.page)
+    if (params.limit)    q.set('limit',    params.limit)
     return request('GET', `/api/exam/exam/timetable/list?${q}`)
   },
   create:  (body)        => request('POST', '/api/exam/exam/timetable/create', body),
@@ -375,7 +381,7 @@ export const studentAttendanceApi = {
     return request('GET', `/api/attendance/student/attendance/list?${q}`)
   },
   bulkCreate: (body)     => request('POST', '/api/attendance/student/attendance/bulk', body),
-  update:     (id, body) => request('PUT', `/api/attendance/student/attendance/update/?student_id=${id}`, body),
+  update:     (id, body) => request('PUT', `/api/attendance/student/attendance/update?student_id=${id}`, body),
   delete:     (id)       => request('DELETE', `/api/attendance/student/attendance/delete/${id}`),
 }
 
@@ -716,15 +722,82 @@ export const bannerApi = {
   imageUrl: (id) => `${BASE_URL}/api/banner/${id}/image/`,
 }
 
+// ── EMPLOYEE LEAVE REQUEST ────────────────────────────────────────────────────
+
+export const empLeaveApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.page)       q.set('page',       params.page)
+    if (params.limit)      q.set('limit',      params.limit)
+    if (params.search)     q.set('search',     params.search)
+    if (params.emp_id)     q.set('emp_id',     params.emp_id)
+    if (params.status)     q.set('status',     params.status)
+    if (params.leave_type) q.set('leave_type', params.leave_type)
+    if (params.from_dt)    q.set('from_dt',    params.from_dt)
+    if (params.to_date)    q.set('to_date',    params.to_date)
+    return request('GET', `/api/emp_leave/list?${q}`)
+  },
+  getById:    (id)          => request('GET', `/api/emp_leave/get/${id}`),
+  create:     (payload, attachmentFile) => {
+    const form = new FormData()
+    form.append('payload', JSON.stringify(payload))
+    if (attachmentFile) form.append('attachment', attachmentFile)
+    return fetch(`${BASE_URL}/api/emp_leave/create`, {
+      method: 'POST',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  update:     (id, payload, attachmentFile) => {
+    const form = new FormData()
+    form.append('payload', JSON.stringify(payload))
+    if (attachmentFile) form.append('attachment', attachmentFile)
+    return fetch(`${BASE_URL}/api/emp_leave/update/${id}`, {
+      method: 'PUT',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+  delete:     (id)          => request('DELETE', `/api/emp_leave/delete/${id}`),
+  approve:    (id)          => request('PATCH', `/api/emp_leave/approve/${id}`),
+  reject:     (id)          => request('PATCH', `/api/emp_leave/reject/${id}`),
+  attachmentUrl: (id)       => `${BASE_URL}/api/emp_leave/attachment/${id}`,
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────────────────
+
+export const uploadApi = {
+  image: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${BASE_URL}/api/upload/`, {
+      method: 'POST',
+      headers: { 'client_key': CLIENT_KEY },
+      body: form,
+    }).then(r => r.json())
+  },
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  login:  (mobile, password) =>
-    fetch(`${BASE_URL}/api/auth/web/login/`, {
+  login: async (mobile, password) => {
+    const r = await fetch(`${BASE_URL}/api/auth/web/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'client_key': CLIENT_KEY },
       body: JSON.stringify({ mobile, password }),
+    })
+    const data = await r.json()
+    if (!r.ok) throw new Error(data?.detail || data?.message || `Login failed (${r.status})`)
+    return data
+  },
+
+  profile: () =>
+    fetch(`${BASE_URL}/api/auth/profile/`, {
+      method: 'GET',
+      headers: { 'client_key': CLIENT_KEY },
     }).then(r => r.json()),
+
   logout: () =>
     fetch(`${BASE_URL}/api/auth/logout/`, {
       method: 'POST',
