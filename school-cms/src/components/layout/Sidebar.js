@@ -16,7 +16,7 @@ import clsx from 'clsx'
 
 const NAV = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Admin Management', icon: UserCheck, children: [
+  { label: 'Admin Managements', icon: UserCheck, children: [
     { label: 'Admin',   href: '/admin/admin-management/admins',   icon: UserCheck },
     { label: 'Group',   href: '/admin/admin-management/group',    icon: Users2 },
 { label: 'Class',   href: '/admin/admin-management/class',    icon: School },
